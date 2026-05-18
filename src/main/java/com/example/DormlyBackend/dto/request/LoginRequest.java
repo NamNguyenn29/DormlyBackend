@@ -9,10 +9,10 @@ import lombok.Data;
 @Builder
 public class LoginRequest {
 
-    @Email
-    @NotBlank
+    @Email(message = "Email must be valid")
+    @NotBlank(message = "Email cannot be blank")
     String email;
 
-    @NotBlank
+    @NotBlank(message = "Password cannot be blank")
     String password;
 }

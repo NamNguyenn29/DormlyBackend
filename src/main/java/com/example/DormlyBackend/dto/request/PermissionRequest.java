@@ -15,7 +15,7 @@ import java.util.Set;
 @AllArgsConstructor
 public class PermissionRequest {
 
-    @NotBlank
+    @NotBlank(message = "Resource cannot be blank")
     String resource;
 
     PermissionAction action;

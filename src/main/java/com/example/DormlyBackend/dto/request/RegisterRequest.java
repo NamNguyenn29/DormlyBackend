@@ -13,8 +13,8 @@ import java.util.Set;
 @Builder
 public class RegisterRequest {
 
-    @Email
-    @NotBlank
+    @Email(message = "Email must be valid")
+    @NotBlank(message = "Email cannot be blank")
     String email;
 
     @Size(min = 6, max = 20, message = "Password must be at least 6 characters long")

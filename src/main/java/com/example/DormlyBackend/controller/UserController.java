@@ -60,13 +60,4 @@ public class UserController {
         return ApiResponse.<List<UserResponseDto>>builder().result(result).message("Get users successfully").build();
     }
 
-    @GetMapping("/me")
-    public ResponseEntity<?> test() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-
-        log.info("Principal class: " + auth.getPrincipal().getClass().getName());
-        log.info("Principal value: " + auth.getPrincipal());
-
-        return ResponseEntity.ok(auth.getPrincipal());
-    }
 }

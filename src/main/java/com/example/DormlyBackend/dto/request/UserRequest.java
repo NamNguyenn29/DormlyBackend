@@ -17,7 +17,7 @@ import java.util.UUID;
 @Builder
 public class UserRequest {
 
-    @Email
+    @Email(message = "Email must be valid")
     String email;
 
     @Length(min = 6, max = 20,message = "Password must be at least 6 characters long")

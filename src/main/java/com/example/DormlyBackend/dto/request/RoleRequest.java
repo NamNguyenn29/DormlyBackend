@@ -14,7 +14,7 @@ import java.util.Set;
 @AllArgsConstructor
 public class RoleRequest {
 
-    @NotBlank
+    @NotBlank(message = "Name cannot be blank")
     String name;
 
     // UUID strings

@@ -14,12 +14,12 @@ import java.util.Set;
 @AllArgsConstructor
 public class NavigationRequest {
 
-    @NotBlank
+    @NotBlank(message = "Name cannot be blank")
     String name;
 
     String vnName;
 
-    @NotBlank
+    @NotBlank(message = "Path cannot be blank")
     String path;
 
     String icon;
