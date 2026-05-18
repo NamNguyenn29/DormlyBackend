@@ -103,7 +103,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             for (Permission permission : role.getPermissions()) {
                 authorities.add(
-                        new SimpleGrantedAuthority("PERMISSION_" + permission.getCode())
+                        new SimpleGrantedAuthority(permission.getCode())
                 );
             }
         }

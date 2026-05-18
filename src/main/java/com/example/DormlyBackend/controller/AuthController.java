@@ -20,41 +20,34 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<Void>> register(@RequestBody @Valid RegisterRequest request) {
+    public ApiResponse<Void> register(@RequestBody @Valid RegisterRequest request) {
         authService.register(request);
-        return ResponseEntity.ok(ApiResponse.<Void>builder().result(null).build());
+        return ApiResponse.<Void>builder().result(null).message("Register account success fully").build();
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<AuthTokensResponse>> login(
+    public ApiResponse<AuthTokensResponse> login(
             @RequestBody @Valid LoginRequest request,
             HttpServletResponse response) {
         AuthTokensResponse result = authService.login(request, response);
-        return ResponseEntity.ok(ApiResponse.<AuthTokensResponse>builder().result(result).build());
+        return ApiResponse.<AuthTokensResponse>builder().result(result).message("Login successfully").build();
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<AuthTokensResponse>> refresh(
+    public ApiResponse<AuthTokensResponse> refresh(
             HttpServletRequest request,
             HttpServletResponse response) {
         AuthTokensResponse result = authService.refresh(request, response);
-        return ResponseEntity.ok(ApiResponse.<AuthTokensResponse>builder().result(result).build());
+        return ApiResponse.<AuthTokensResponse>builder().result(result).message("Refresh successfully").build();
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request, HttpServletResponse response) {
+    public ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         authService.logout(request, response);
-        return ResponseEntity.ok(ApiResponse.<Void>builder().result(null).build());
+        return ApiResponse.<Void>builder().result(null).build();
     }
 
-    private final com.example.DormlyBackend.service.NavigationMeService navigationMeService;
 
-    @GetMapping("/me")
-    public ResponseEntity<ApiResponse<java.util.List<com.example.DormlyBackend.dto.response.NavigationResponseDto>>> me() {
-        var result = navigationMeService.getMyNavigationsTree();
-        return ResponseEntity
-                .ok(ApiResponse.<java.util.List<com.example.DormlyBackend.dto.response.NavigationResponseDto>>builder()
-                        .result(result).build());
-    }
+
 
 }

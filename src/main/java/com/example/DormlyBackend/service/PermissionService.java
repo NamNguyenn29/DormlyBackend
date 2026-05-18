@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -37,6 +38,7 @@ public class PermissionService {
                 });
 
         Permission permission = permissionMapper.toEntity(request);
+        permission.setCode(code);
         permission.setRoles(resolveRoles(request.getRoleIds()));
         permission.setNavigations(resolveNavigations(request.getNavigationIds()));
         permission = permissionRepository.save(permission);
@@ -57,9 +59,12 @@ public class PermissionService {
                         com.example.DormlyBackend.exception.code.ErrorCode.RESOURCE_NOT_FOUND, "Permission", id));
 
         permissionMapper.updatePermissionFromRequest(permission, request);
-        permission.setRoles(resolveRoles(request.getRoleIds()));
-        permission.setNavigations(resolveNavigations(request.getNavigationIds()));
-
+        if(request.getRoleIds() != null) {
+            permission.setRoles(resolveRoles(request.getRoleIds()));
+        }
+        if(request.getNavigationIds() != null) {
+            permission.setNavigations(resolveNavigations(request.getNavigationIds()));
+        }
         permission = permissionRepository.save(permission);
         return permissionMapper.toDto(permission);
     }
@@ -91,7 +96,7 @@ public class PermissionService {
 
     private Set<Navigation> resolveNavigations(Set<String> navigationIds) {
         if (navigationIds == null)
-            return Set.of();
+            return new HashSet<>();
         return navigationIds.stream()
                 .map(this::toUuidOrThrow)
                 .map(uuid -> navigationRepository.findById(uuid)

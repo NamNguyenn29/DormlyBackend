@@ -33,7 +33,9 @@ public class RoleService {
                 });
 
         Role role = roleMapper.toEntity(request);
-        role.setPermissions(resolvePermissions(request.getPermissionIds()));
+        if(request.getPermissionIds() != null) {
+            role.setPermissions(resolvePermissions(request.getPermissionIds()));
+        }
         role = roleRepository.save(role);
         return roleMapper.toDto(role);
     }
@@ -52,7 +54,9 @@ public class RoleService {
                         .notFound(com.example.DormlyBackend.exception.code.ErrorCode.RESOURCE_NOT_FOUND, "Role", id));
 
         roleMapper.updateRoleFromRequest(role, request);
-        role.setPermissions(resolvePermissions(request.getPermissionIds()));
+        if(request.getPermissionIds() != null) {
+            role.setPermissions(resolvePermissions(request.getPermissionIds()));
+        }
         role = roleRepository.save(role);
         return roleMapper.toDto(role);
     }

@@ -49,4 +49,12 @@ public class NavigationController {
         var result = navigationService.list();
         return ResponseEntity.ok(ApiResponse.<List<NavigationResponseDto>>builder().result(result).build());
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<java.util.List<com.example.DormlyBackend.dto.response.NavigationResponseDto>>> me() {
+        var result = navigationService.getMyNavigationsTree();
+        return ResponseEntity
+                .ok(ApiResponse.<java.util.List<com.example.DormlyBackend.dto.response.NavigationResponseDto>>builder()
+                        .result(result).build());
+    }
 }

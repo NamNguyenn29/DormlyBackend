@@ -164,7 +164,7 @@ public class AuthService {
         int maxAgeSeconds = (int) ttl.getSeconds();
 
         // SameSite=Lax by default; use secure in prod
-        boolean secure = true;
+        boolean secure = false;
 
         String cookie = String.format(
                 "%s=%s; Path=/api/v1/auth/refresh; HttpOnly; Max-Age=%d; SameSite=Lax%s",

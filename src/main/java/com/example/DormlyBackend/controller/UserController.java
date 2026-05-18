@@ -7,6 +7,7 @@ import com.example.DormlyBackend.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,34 +21,38 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<UserResponseDto>> create(@RequestBody @Valid UserRequest request) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<UserResponseDto> create(@RequestBody @Valid UserRequest request) {
         var result = userService.create(request);
-        return ResponseEntity.ok(ApiResponse.<UserResponseDto>builder().result(result).build());
+        return ApiResponse.<UserResponseDto>builder().message("User create successfully").result(result).build();
 
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<UserResponseDto>> getById(@PathVariable UUID id) {
+    public ApiResponse<UserResponseDto> getById(@PathVariable UUID id) {
         var result = userService.getById(id);
-        return ResponseEntity.ok(ApiResponse.<UserResponseDto>builder().result(result).build());
+        return ApiResponse.<UserResponseDto>builder().result(result).message("Get user by id successfully").build();
     }
+
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<UserResponseDto>> update(@PathVariable UUID id,
+    public ApiResponse<UserResponseDto> update(@PathVariable UUID id,
             @RequestBody @Valid UserRequest request) {
         var result = userService.update(id, request);
-        return ResponseEntity.ok(ApiResponse.<UserResponseDto>builder().result(result).build());
+        return ApiResponse.<UserResponseDto>builder().result(result).message("Update user successfully").build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
+    public ApiResponse<Void> delete(@PathVariable UUID id) {
         userService.delete(id);
-        return ResponseEntity.ok(ApiResponse.<Void>builder().result(null).build());
+        return ApiResponse.<Void>builder().result(null).build();
     }
 
+    @PreAuthorize("hasRole('AMIN') or hasAuthority('USERMANAGEMENT_READ')")
     @GetMapping
-    public ResponseEntity<ApiResponse<List<UserResponseDto>>> list() {
+    public ApiResponse<List<UserResponseDto>> list() {
         var result = userService.list();
-        return ResponseEntity.ok(ApiResponse.<List<UserResponseDto>>builder().result(result).build());
+        return ApiResponse.<List<UserResponseDto>>builder().result(result).message("Get users successfully").build();
     }
 }

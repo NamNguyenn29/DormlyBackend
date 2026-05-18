@@ -20,6 +20,7 @@ public interface UserMapper {
     @Mapping(source = "audit.createdBy", target = "createdBy")
     @Mapping(source = "audit.updatedAt", target = "updatedAt")
     @Mapping(source = "audit.updatedBy", target = "updatedBy")
+    @Mapping(source = "active", target = "isActive")
     UserResponseDto toDto(User user);
 
     @Mapping(target = "id", ignore = true)

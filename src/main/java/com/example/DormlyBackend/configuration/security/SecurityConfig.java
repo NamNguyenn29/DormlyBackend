@@ -33,12 +33,13 @@ public class SecurityConfig {
         private final AuthenticationEntryPoint jwtAuthEntryPoint;
         private final AccessDeniedHandler jwtAccessDeniedHandler;
 
+
         private static final String[] PUBLIC_URLS = {
                         "/api/v1/auth/**",
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/actuator/health",
-                        "/swagger-ui.html",      // ← thêm
+                        "/swagger-ui.html",
                         "/api-docs/**",
         };
 
@@ -64,8 +65,7 @@ public class SecurityConfig {
                                 // permit all for seed
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers(PUBLIC_URLS).permitAll()
-                                                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                                                .anyRequest().permitAll())
+                                                .anyRequest().authenticated())
 
                                 // Stateless session
                                 .sessionManagement(session -> session

@@ -20,33 +20,33 @@ public class RoleController {
     private final RoleService roleService;
 
     @PostMapping
-    public ResponseEntity<ApiResponse<RoleResponseDto>> create(@RequestBody @Valid RoleRequest request) {
+    public ApiResponse<RoleResponseDto> create(@RequestBody @Valid RoleRequest request) {
         var result = roleService.create(request);
-        return ResponseEntity.ok(ApiResponse.<RoleResponseDto>builder().result(result).build());
+        return ApiResponse.<RoleResponseDto>builder().result(result).message("Create role successfully").build();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<RoleResponseDto>> getById(@PathVariable UUID id) {
+    public ApiResponse<RoleResponseDto> getById(@PathVariable UUID id) {
         var result = roleService.getById(id);
-        return ResponseEntity.ok(ApiResponse.<RoleResponseDto>builder().result(result).build());
+        return ApiResponse.<RoleResponseDto>builder().result(result).message("Get role by id successfully").build();
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<RoleResponseDto>> update(@PathVariable UUID id,
+    public ApiResponse<RoleResponseDto> update(@PathVariable UUID id,
             @RequestBody @Valid RoleRequest request) {
         var result = roleService.update(id, request);
-        return ResponseEntity.ok(ApiResponse.<RoleResponseDto>builder().result(result).build());
+        return ApiResponse.<RoleResponseDto>builder().result(result).message("Update role successfully").build();
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
+    public ApiResponse<Void> delete(@PathVariable UUID id) {
         roleService.delete(id);
-        return ResponseEntity.ok(ApiResponse.<Void>builder().result(null).build());
+        return ApiResponse.<Void>builder().result(null).build();
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<RoleResponseDto>>> list() {
+    public ApiResponse<List<RoleResponseDto>> list() {
         var result = roleService.list();
-        return ResponseEntity.ok(ApiResponse.<List<RoleResponseDto>>builder().result(result).build());
+        return ApiResponse.<List<RoleResponseDto>>builder().result(result).message("Get roles successfully").build();
     }
 }
