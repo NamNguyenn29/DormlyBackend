@@ -17,7 +17,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.List;
-
+import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.security.access.AccessDeniedException;
 @RestControllerAdvice
 @Slf4j
 @RequiredArgsConstructor
@@ -87,6 +88,16 @@ public class GlobalExceptionHandler {
                 .message(ErrorCode.INTERNAL_SERVER_ERROR.getMessageTemplate())
                 .build();
         return ResponseEntity.internalServerError().body(body);
+    }
+
+    @ExceptionHandler({AuthorizationDeniedException.class, AccessDeniedException.class})
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(RuntimeException ex) {
+        log.warn("Access denied [traceId={}]: {}", traceId(), ex.getMessage());
+        var body = ApiResponse.<Void>builder()
+                .code(HttpStatus.FORBIDDEN.value())
+                .message("Access Denied")
+                .build();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
     private ResponseEntity<ApiResponse<Void>> buildError(BaseException ex) {

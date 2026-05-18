@@ -58,13 +58,8 @@ public class AuthService {
         user.setFullName(request.getFullName());
         user.setPhoneNumber(request.getPhoneNumber());
         user.setDateOfBirth(request.getDateOfBirth());
-        // field isActive exists as `isActive`; Lombok setter is setActive(boolean) or
-        // setIsActive(boolean) depending on Lombok.
-        // Use setter that exists in compiled code by calling direct field style through
-        // setActive if available.
         user.setActive(false);
 
-//        user.setRoles(resolveRolesByName(request.getRoles()));
         Set<Role> roles = Set.of( roleRepository.findByName("User").orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND,"Role","User")));
 
         user.setRoles(roles);

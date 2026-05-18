@@ -11,6 +11,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -21,8 +23,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -66,9 +70,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                             Set<SimpleGrantedAuthority> authorities = buildAuthorities(user);
 
+                            UserPrincipal userPrincipal = new UserPrincipal(
+                                    user.getId(),
+                                    user.getEmail(),
+                                    user.getFullName(),   // lấy fullName ở đây
+                                    authorities
+                            );
+
+
                             UsernamePasswordAuthenticationToken authToken =
                                     new UsernamePasswordAuthenticationToken(
-                                            email, null, authorities);
+                                            userPrincipal, null, authorities);
 
                             authToken.setDetails(
                                     new WebAuthenticationDetailsSource().buildDetails(request));
@@ -109,4 +121,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         return authorities;
     }
+}
+
+@Getter
+@AllArgsConstructor
+ class UserPrincipal {
+    private UUID id;
+    private String email;
+    private String fullName;
+    private Set<SimpleGrantedAuthority> authorities;
 }

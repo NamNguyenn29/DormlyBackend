@@ -62,7 +62,6 @@ public class SecurityConfig {
                                                 .xssProtection(Customizer.withDefaults()))
 
                                 // Phân quyền
-                                // permit all for seed
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers(PUBLIC_URLS).permitAll()
                                                 .anyRequest().authenticated())

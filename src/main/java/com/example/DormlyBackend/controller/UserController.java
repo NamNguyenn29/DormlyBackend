@@ -6,8 +6,11 @@ import com.example.DormlyBackend.dto.response.UserResponseDto;
 import com.example.DormlyBackend.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,6 +19,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
+@Slf4j
 public class UserController {
 
     private final UserService userService;
@@ -54,5 +58,15 @@ public class UserController {
     public ApiResponse<List<UserResponseDto>> list() {
         var result = userService.list();
         return ApiResponse.<List<UserResponseDto>>builder().result(result).message("Get users successfully").build();
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> test() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        log.info("Principal class: " + auth.getPrincipal().getClass().getName());
+        log.info("Principal value: " + auth.getPrincipal());
+
+        return ResponseEntity.ok(auth.getPrincipal());
     }
 }

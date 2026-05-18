@@ -10,6 +10,7 @@ import com.example.DormlyBackend.mapper.UserMapper;
 import com.example.DormlyBackend.repository.RoleRepository;
 import com.example.DormlyBackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +43,7 @@ public class UserService {
         return userMapper.toDto(user);
     }
 
+    @PostAuthorize("hasRole('ADMIN') or returnObject.id.toString() == authentication.principal.id.toString()")
     @Transactional(readOnly = true)
     public UserResponseDto getById(UUID id) {
         User user = userRepository.findUserWithRoles(id)
@@ -57,7 +59,9 @@ public class UserService {
         if(request.getPassword() != null) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
-        user.setRoles(resolveRolesByName(request.getRoles()));
+        if(request.getRoles() != null) {
+            user.setRoles(resolveRolesByName(request.getRoles()));
+        }
         user = userRepository.save(user);
         return userMapper.toDto(user);
     }

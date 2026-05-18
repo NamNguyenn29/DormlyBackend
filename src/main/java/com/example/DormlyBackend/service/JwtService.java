@@ -1,12 +1,16 @@
 package com.example.DormlyBackend.service;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 import javax.crypto.SecretKey;
 
+import com.example.DormlyBackend.entity.authentication.User;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -35,8 +39,27 @@ public class JwtService {
         return claimsResolver.apply(extractAllClaims(token));
     }
 
+    public String extractUserId(String token) {
+        return extractClaim(token, claims -> claims.get("id", String.class));
+    }
+
+    public List<String> extractRoles(String token) {
+        return extractClaim(token, claims -> claims.get("roles", List.class));
+    }
+
     public String generateToken(UserDetails userDetails) {
-        return generateToken(Map.of(), userDetails);
+
+       SecurityUserDetails securityUserDetails = (SecurityUserDetails) userDetails;
+
+        Map<String, Object> extraClaims = Map.of(
+                "id",    securityUserDetails.getId().toString(),
+                "roles", securityUserDetails.getAuthorities()
+                        .stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .toList()
+        );
+
+        return generateToken(extraClaims, userDetails);
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
