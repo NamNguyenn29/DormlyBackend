@@ -1,5 +1,6 @@
 package com.example.DormlyBackend.controller;
 
+import com.example.DormlyBackend.dto.request.ChangePasswordRequest;
 import com.example.DormlyBackend.dto.request.UserRequest;
 import com.example.DormlyBackend.dto.response.ApiResponse;
 import com.example.DormlyBackend.dto.response.UserResponseDto;
@@ -7,10 +8,7 @@ import com.example.DormlyBackend.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -59,5 +57,21 @@ public class UserController {
         var result = userService.list();
         return ApiResponse.<List<UserResponseDto>>builder().result(result).message("Get users successfully").build();
     }
+
+    @PatchMapping("toggle/{/id}")
+    public ApiResponse<UserResponseDto> toggleUserStatus(UUID id) {
+        var result = userService.toggleStatus(id);
+        return ApiResponse.<UserResponseDto>builder().result(result).message("Toggle user status successfully").build();
+    }
+
+    @PutMapping("/{id}/update-password")
+    public ApiResponse<Void> updatePassword(@PathVariable UUID id, @RequestBody @Valid ChangePasswordRequest request) {
+        userService.updatePassword(id,request);
+        return ApiResponse.<Void>builder().result(null).message("Update password successfully").build();
+    }
+
+
+
+
 
 }

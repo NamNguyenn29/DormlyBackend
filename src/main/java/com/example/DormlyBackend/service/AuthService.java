@@ -3,13 +3,17 @@ package com.example.DormlyBackend.service;
 import com.example.DormlyBackend.dto.request.LoginRequest;
 import com.example.DormlyBackend.dto.request.RegisterRequest;
 import com.example.DormlyBackend.dto.response.AuthTokensResponse;
+import com.example.DormlyBackend.entity.authentication.RequestCode;
 import com.example.DormlyBackend.entity.authentication.Role;
 import com.example.DormlyBackend.entity.authentication.User;
+import com.example.DormlyBackend.enums.PurposeCode;
 import com.example.DormlyBackend.exception.code.ErrorCode;
 import com.example.DormlyBackend.exception.factory.ExceptionFactory;
+import com.example.DormlyBackend.repository.RequestCodeRepository;
 import com.example.DormlyBackend.repository.RoleRepository;
 import com.example.DormlyBackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -20,12 +24,14 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Set;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional
 public class AuthService {
 
@@ -33,6 +39,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final RequestCodeRepository requestCodeRepository;
 
 
     private final JwtService jwtService;
@@ -51,6 +58,15 @@ public class AuthService {
                 .ifPresent(u -> {
                     throw ExceptionFactory.business(ErrorCode.USER_ALREADY_EXISTS, request.getEmail());
                 });
+
+
+        RequestCode regisCode =  requestCodeRepository.findTopByRecipientContactAndPurposeOrderByExpiryTimeDesc(request.getEmail(), PurposeCode.REGISTRATION)
+                .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND,request.getRegistrationCode()));
+
+        if(!regisCode.getCode().equals(request.getRegistrationCode()) || regisCode.getExpiryTime().isBefore(LocalDateTime.now())) {
+            throw ExceptionFactory.business(ErrorCode.INVALID_REQUEST, "Invalid registration code");
+        }
+        requestCodeRepository.delete(regisCode);
 
         User user = new User();
         user.setEmail(request.getEmail());

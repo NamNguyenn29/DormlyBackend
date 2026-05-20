@@ -31,4 +31,7 @@ public class RegisterRequest {
 
     // role names
     Set<String> roles;
+
+    @NotBlank(message = "Registration code cannot be blank")
+    String registrationCode;
 }

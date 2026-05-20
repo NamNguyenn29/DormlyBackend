@@ -1,5 +1,6 @@
 package com.example.DormlyBackend.service;
 
+import com.example.DormlyBackend.dto.request.ChangePasswordRequest;
 import com.example.DormlyBackend.dto.request.UserRequest;
 import com.example.DormlyBackend.dto.response.UserResponseDto;
 import com.example.DormlyBackend.entity.authentication.Role;
@@ -77,6 +78,28 @@ public class UserService {
         return userRepository.findAll().stream().map(userMapper::toDto).toList();
     }
 
+    public UserResponseDto toggleStatus(UUID id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.USER_NOT_FOUND, id));
+        user.setActive(!user.isActive());
+        user = userRepository.save(user);
+        return userMapper.toDto(user);
+    }
+
+    public void updatePassword(UUID userId, ChangePasswordRequest request) {
+        User user = userRepository.findById(userId).orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.USER_NOT_FOUND, userId));
+
+        if(!request.getOldPassword().equals(request.getConfirmPassword())) {
+            throw ExceptionFactory.business(ErrorCode.PASSWORD_NOT_EQUAL,request.getConfirmPassword());
+        }
+
+        if(!user.getPassword().equals(passwordEncoder.encode(request.getOldPassword()))) {
+            throw ExceptionFactory.business(ErrorCode.PASSWORD_NOT_EQUAL,request.getConfirmPassword());
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
     private Set<Role> resolveRolesByName(Set<String> roles) {
         if (roles == null)
             return Set.of();
@@ -86,4 +109,6 @@ public class UserService {
                         .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "Role", name)))
                 .collect(java.util.stream.Collectors.toSet());
     }
+
+
 }
