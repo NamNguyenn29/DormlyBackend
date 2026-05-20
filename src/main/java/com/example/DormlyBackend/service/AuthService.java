@@ -215,4 +215,24 @@ public class AuthService {
                         .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "Role", name)))
                 .collect(java.util.stream.Collectors.toSet());
     }
+
+    public void forgotPassword(String email,String code,String newPassword,String confirmPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.USER_NOT_FOUND, email));
+
+        if(!newPassword.equals(confirmPassword)) {
+            throw ExceptionFactory.business(ErrorCode.PASSWORD_NOT_EQUAL,confirmPassword);
+        }
+
+        RequestCode forgotCode =  requestCodeRepository.findTopByRecipientContactAndPurposeOrderByExpiryTimeDesc(email, PurposeCode.FORGOT_PASSWORD)
+                .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND,code));
+
+        if(!forgotCode.getCode().equals(code) || forgotCode.getExpiryTime().isBefore(LocalDateTime.now())) {
+            throw ExceptionFactory.business(ErrorCode.INVALID_REQUEST, "Invalid code");
+        }
+        requestCodeRepository.delete(forgotCode);
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
 }
