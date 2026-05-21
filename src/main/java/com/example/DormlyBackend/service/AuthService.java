@@ -1,5 +1,7 @@
 package com.example.DormlyBackend.service;
 
+import com.example.DormlyBackend.configuration.security.oauth2.OAuth2AuthCodeStore;
+import com.example.DormlyBackend.dto.request.ForgotPasswordRequest;
 import com.example.DormlyBackend.dto.request.LoginRequest;
 import com.example.DormlyBackend.dto.request.RegisterRequest;
 import com.example.DormlyBackend.dto.response.AuthTokensResponse;
@@ -12,9 +14,11 @@ import com.example.DormlyBackend.exception.factory.ExceptionFactory;
 import com.example.DormlyBackend.repository.RequestCodeRepository;
 import com.example.DormlyBackend.repository.RoleRepository;
 import com.example.DormlyBackend.repository.UserRepository;
+import jakarta.servlet.http.Cookie;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -40,6 +46,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final RequestCodeRepository requestCodeRepository;
+    private final  OAuth2AuthCodeStore oAuth2AuthCodeStore;
 
 
     private final JwtService jwtService;
@@ -207,6 +214,29 @@ public class AuthService {
         return null;
     }
 
+    private AuthTokensResponse issueTokens(User user, HttpServletResponse response) {
+        String accessToken  = jwtService.generateToken(userDetailsService.loadUserByUsername(user.getEmail()));
+        String refreshToken = jwtService.generateRefreshToken(userDetailsService.loadUserByUsername(user.getEmail()));
+
+
+        user.setRefreshToken(refreshToken);
+        userRepository.save(user);
+
+        setRefreshCookie(response, refreshToken, Duration.ofMillis(refreshExpirationMs));
+
+        return AuthTokensResponse.builder()
+                .accessToken(accessToken)
+                .build();
+    }
+
+    private void clearOAuth2CodeCookie(HttpServletResponse response) {
+        Cookie expired = new Cookie("OAUTH2_CODE", "");
+        expired.setHttpOnly(true);
+        expired.setMaxAge(0);
+        expired.setPath("/api/v1/auth/oauth2/token");
+        response.addCookie(expired);
+    }
+
     private Set<Role> resolveRolesByName(Set<String> roleNames) {
         if (roleNames == null)
             return Set.of();
@@ -216,23 +246,42 @@ public class AuthService {
                 .collect(java.util.stream.Collectors.toSet());
     }
 
-    public void forgotPassword(String email,String code,String newPassword,String confirmPassword) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.USER_NOT_FOUND, email));
+    public void forgotPassword(ForgotPasswordRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.USER_NOT_FOUND, request.getEmail()));
 
-        if(!newPassword.equals(confirmPassword)) {
-            throw ExceptionFactory.business(ErrorCode.PASSWORD_NOT_EQUAL,confirmPassword);
+        if(!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw ExceptionFactory.business(ErrorCode.PASSWORD_NOT_EQUAL,request.getConfirmPassword());
         }
 
-        RequestCode forgotCode =  requestCodeRepository.findTopByRecipientContactAndPurposeOrderByExpiryTimeDesc(email, PurposeCode.FORGOT_PASSWORD)
-                .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND,code));
+        RequestCode forgotCode =  requestCodeRepository.findTopByRecipientContactAndPurposeOrderByExpiryTimeDesc(request.getEmail(), PurposeCode.FORGOT_PASSWORD)
+                .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND,request.getCode()));
 
-        if(!forgotCode.getCode().equals(code) || forgotCode.getExpiryTime().isBefore(LocalDateTime.now())) {
+        if(!forgotCode.getCode().equals(request.getCode()) || forgotCode.getExpiryTime().isBefore(LocalDateTime.now())) {
             throw ExceptionFactory.business(ErrorCode.INVALID_REQUEST, "Invalid code");
         }
         requestCodeRepository.delete(forgotCode);
 
-        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+    }
+
+    public AuthTokensResponse exchangeOAuth2Code(String code, HttpServletResponse response) {
+        if (code == null || code.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing OAuth2 code");
+        }
+
+        String email = oAuth2AuthCodeStore.consumeEmail(code);
+        if (email == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired OAuth2 code");
+        }
+
+        User user = userRepository.findUserWithRolesByEmail(email)
+                .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.USER_NOT_FOUND, email));
+
+        // Xóa OAUTH2_CODE cookie
+        clearOAuth2CodeCookie(response);
+
+        return issueTokens(user, response);
     }
 }

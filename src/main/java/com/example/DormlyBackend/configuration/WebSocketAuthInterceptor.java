@@ -1,4 +1,4 @@
-package com.example.DormlyBackend.configuration.websocket;
+package com.example.DormlyBackend.configuration;
 
 import com.example.DormlyBackend.exception.factory.ExceptionFactory;
 import com.example.DormlyBackend.service.JwtService;

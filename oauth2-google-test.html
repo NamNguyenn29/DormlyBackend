@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Google OAuth2 Test (DormlyBackend)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 16px;
+        }
+
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+
+        .row {
+            margin: 8px 0;
+        }
+
+        input {
+            padding: 8px;
+            width: 420px;
+            max-width: 100%;
+        }
+
+        button {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        pre {
+            background: #0b1020;
+            color: #e7eefc;
+            padding: 12px;
+            border-radius: 10px;
+            overflow: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Google OAuth2 login flow test (backend token exchange via cookie)</h2>
+
+    <p>
+        This page does <b>NOT</b> handle the Google redirect itself.
+        You trigger Google login by navigating to <code>/oauth2/authorization/google</code>,
+        then your backend redirects to <code>app.frontend-url/oauth2/callback</code>.
+    </p>
+
+    <h3>1) Start Google login</h3>
+    <div class="row">
+        <label>Backend base URL</label><br />
+        <input id="backend" value="http://localhost:8080" />
+    </div>
+    <div class="row">
+        <button id="btnAuth">Open Google OAuth2 login</button>
+    </div>
+
+    <h3>2) Exchange OAUTH2_CODE cookie -> JWT</h3>
+    <p>
+        After successful Google login, backend sets <code>OAUTH2_CODE</code> cookie with path
+        <code>/api/auth/oauth2/token</code>, then redirects to your frontend callback.
+        If that cookie exists for this path, the call below should return <code>accessToken</code>.
+    </p>
+
+    <div class="row">
+        <button id="btnExchange">POST /api/v1/auth/oauth2/token (no body)</button>
+    </div>
+
+    <h3>Debug</h3>
+    <div class="row">
+        <button id="btnCookies">Show document.cookie</button>
+    </div>
+    <pre id="out"></pre>
+
+    <script>
+        const out = document.getElementById('out');
+        const backendEl = document.getElementById('backend');
+
+        function log(obj) {
+            out.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+            console.log(obj);
+        }
+
+        document.getElementById('btnCookies').addEventListener('click', async () => {
+            // Note: cookie is HttpOnly, so it won't appear in document.cookie.
+            // This is just for visibility of non-HttpOnly cookies.
+            log({ documentCookie: document.cookie });
+        });
+
+        document.getElementById('btnAuth').addEventListener('click', () => {
+            const backend = backendEl.value.replace(/\/$/, '');
+            // Spring Security default endpoint for initiating oauth2 login:
+            // /oauth2/authorization/{registrationId}
+            window.location.href = `${backend}/oauth2/authorization/google`;
+        });
+
+        document.getElementById('btnExchange').addEventListener('click', async () => {
+            const backend = backendEl.value.replace(/\/$/, '');
+            try {
+                out.textContent = 'Calling token exchange...';
+                const res = await fetch(`${backend}/api/v1/auth/oauth2/token`, {
+                    method: 'POST',
+                    // credentials needed so browser sends cookies to same-site/path request
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const text = await res.text();
+                let json;
+                try { json = JSON.parse(text); } catch { json = { raw: text }; }
+
+                log({ status: res.status, statusText: res.statusText, body: json });
+            } catch (e) {
+                log({ error: String(e) });
+            }
+        });
+    </script>
+</body>
+
+</html>

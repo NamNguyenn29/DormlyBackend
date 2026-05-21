@@ -12,14 +12,13 @@ import lombok.experimental.FieldDefaults;
 import lombok.AccessLevel;
 
 
-
 @Configuration
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-   com.example.DormlyBackend.configuration.websocket.WebSocketAuthInterceptor authInterceptor;
+    private final WebSocketAuthInterceptor authInterceptor;
 
 
     @Override

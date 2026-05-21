@@ -2,6 +2,9 @@ package com.example.DormlyBackend.configuration.security;
 
 import java.util.List;
 
+import com.example.DormlyBackend.configuration.security.oauth2.CustomOAuth2UserService;
+import com.example.DormlyBackend.configuration.security.oauth2.OAuth2FailureHandler;
+import com.example.DormlyBackend.configuration.security.oauth2.OAuth2SuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -32,6 +35,9 @@ public class SecurityConfig {
     private final AuthenticationProvider authenticationProvider;
     private final AuthenticationEntryPoint jwtAuthEntryPoint;
     private final AccessDeniedHandler jwtAccessDeniedHandler;
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler successHandler;
+    private final OAuth2FailureHandler failureHandler;
 
 
     private static final String[] PUBLIC_URLS = {
@@ -42,7 +48,8 @@ public class SecurityConfig {
             "/swagger-ui.html",
             "/api-docs/**",
             "/ws/**",
-            "/api/request-code/**"
+            "/api/request-code/**",
+            "/login/oauth2/code/google/**"
     };
 
     @Bean
@@ -67,7 +74,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated())
-
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(ui -> ui.userService(customOAuth2UserService))
+                        .successHandler(successHandler)
+                        .failureHandler(failureHandler)
+                )
                 // Stateless session
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))

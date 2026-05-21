@@ -1,5 +1,7 @@
 package com.example.DormlyBackend.controller;
 
+import com.example.DormlyBackend.configuration.security.oauth2.OAuth2AuthCodeStore;
+import com.example.DormlyBackend.dto.request.ForgotPasswordRequest;
 import com.example.DormlyBackend.dto.request.LoginRequest;
 import com.example.DormlyBackend.dto.request.RegisterRequest;
 import com.example.DormlyBackend.dto.response.ApiResponse;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final OAuth2AuthCodeStore oAuth2AuthCodeStore;
 
     @PostMapping("/register")
     public ApiResponse<Void> register(@RequestBody @Valid RegisterRequest request) {
@@ -49,9 +52,21 @@ public class AuthController {
 
 
     @PostMapping("/forgot-password")
-    public ApiResponse<Void> forgotPassword(@RequestBody String email,String code,String newPassword,String confirmPassword ) {
-        authService.forgotPassword(email,code,newPassword,confirmPassword);
+    public ApiResponse<Void> forgotPassword(@RequestBody ForgotPasswordRequest request ) {
+        authService.forgotPassword(request);
         return ApiResponse.<Void>builder().result(null).message("Forgot password successfully").build();
     }
+
+    @PostMapping("/oauth2/token")
+    public ApiResponse<AuthTokensResponse> exchangeOAuth2Code(
+            @CookieValue(name = "OAUTH2_CODE", required = false) String code,
+            HttpServletResponse response) {
+        return ApiResponse.<AuthTokensResponse>builder()
+                .result(authService.exchangeOAuth2Code(code, response))
+                .message("OAuth2 login successfully")
+                .build();
+    }
+
+
 
 }

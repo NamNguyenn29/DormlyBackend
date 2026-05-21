@@ -51,7 +51,7 @@ public class UserController {
         return ApiResponse.<Void>builder().result(null).build();
     }
 
-    @PreAuthorize("hasRole('AMIN') or hasAuthority('USERMANAGEMENT_READ')")
+//    @PreAuthorize("hasRole('AMIN') or hasAuthority('USERMANAGEMENT_READ')")
     @GetMapping
     public ApiResponse<List<UserResponseDto>> list() {
         var result = userService.list();
