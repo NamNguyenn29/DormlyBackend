@@ -40,8 +40,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private User createNewGoogleUser(String email, String fullName) {
         log.info("Creating new user with email: {}", email);
-        var userRole = roleRepository.findByName("USER")
-                .orElseThrow(() -> new RuntimeException("Role USER not found in DB"));
+        var userRole = roleRepository.findByName("User")
+                .orElseThrow(() -> new RuntimeException("Role User not found in DB"));
 
         User user = new User();
         user.setEmail(email);
