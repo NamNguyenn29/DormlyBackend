@@ -8,6 +8,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -32,6 +33,7 @@ public class SecurityUserDetails implements UserDetails {
                         .map(Role::getName)
                         .filter(r -> r != null && !r.isBlank())
                         .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r)
+                        .map(r -> r.toUpperCase(Locale.ROOT))
                         .map(SimpleGrantedAuthority::new)
                         .collect(Collectors.toSet());
     }
