@@ -1,0 +1,13 @@
+target/
+build/
+.git/
+.gitignore
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.env
+.env.local
+*.log
+.DS_Store
