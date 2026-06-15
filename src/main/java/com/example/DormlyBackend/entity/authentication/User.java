@@ -1,6 +1,8 @@
 package com.example.DormlyBackend.entity.authentication;
 
 import com.example.DormlyBackend.configuration.AuditMetaData;
+import com.example.DormlyBackend.entity.information.StudentProfile;
+import com.example.DormlyBackend.entity.information.UserDocument;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.*;
@@ -45,10 +47,11 @@ public class User {
     @Column(length = 15)
     String phoneNumber;
 
-    @Column(nullable = true)
-    String forgotPasswordCode;
-
     String refreshToken;
+
+    String gender;
+
+    String avatar;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -56,9 +59,15 @@ public class User {
             joinColumns = @JoinColumn(name = "user_id")
             , inverseJoinColumns = @JoinColumn(name = "role_id")
     )
+
     Set<Role> roles = new HashSet<>();
 
     @Embedded
     AuditMetaData audit = new AuditMetaData();
 
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    StudentProfile studentProfile;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<UserDocument> documents = new ArrayList<>();
 }

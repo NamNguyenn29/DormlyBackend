@@ -127,11 +127,3 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 }
 
-@Getter
-@AllArgsConstructor
- class UserPrincipal {
-    private UUID id;
-    private String email;
-    private String fullName;
-    private Set<SimpleGrantedAuthority> authorities;
-}

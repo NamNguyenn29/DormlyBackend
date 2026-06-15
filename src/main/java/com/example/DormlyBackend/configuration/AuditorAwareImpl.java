@@ -2,6 +2,8 @@ package com.example.DormlyBackend.configuration;
 
 import com.example.DormlyBackend.entity.authentication.User;
 import com.example.DormlyBackend.repository.UserRepository;
+import com.example.DormlyBackend.service.SecurityUserDetails;
+import com.example.DormlyBackend.configuration.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.core.Authentication;
@@ -31,7 +33,13 @@ public class AuditorAwareImpl implements AuditorAware<String> {
         String username = authentication.getName();
 
         // Query DB lấy fullName
-        return userRepository.findByEmail(username)
-                .map(User::getFullName);
+        Object principal = authentication.getPrincipal();
+
+        // Ép kiểu sang SecurityUserDetails để lấy fullName từ bộ nhớ (không query DB)
+        if (principal instanceof UserPrincipal) {
+            return Optional.ofNullable(((UserPrincipal) principal).getFullName()); // Gọi trực tiếp getter
+        }
+
+        return Optional.of(authentication.getName());
     }
 }
