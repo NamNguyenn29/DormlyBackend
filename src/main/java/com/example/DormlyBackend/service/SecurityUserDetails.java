@@ -20,11 +20,13 @@ public class SecurityUserDetails implements UserDetails {
     private final String password;
     private final boolean enabled;
     private final Collection<? extends GrantedAuthority> authorities;
+    private final String fullName;
 
     public SecurityUserDetails(User user) {
         this.id = user.getId();
         this.username = user.getEmail();
         this.password = user.getPassword();
+        this.fullName = user.getFullName();
         this.enabled = true;
 
         Set<Role> roles = user.getRoles();
@@ -38,11 +40,14 @@ public class SecurityUserDetails implements UserDetails {
                         .collect(Collectors.toSet());
     }
 
+    public String getFullName() { return fullName; }
+
     public UUID getId() { return id; }
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return authorities;
     }
+
 
     @Override
     public String getPassword() {

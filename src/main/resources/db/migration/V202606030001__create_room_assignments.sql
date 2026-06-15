@@ -1,0 +1,28 @@
+-- CREATE TABLE room_assignments (
+--     id uniqueidentifier NOT NULL DEFAULT NEWID(),
+--     user_id uniqueidentifier NOT NULL,
+--     room_node_id uniqueidentifier NOT NULL,
+--     start_date datetime2 NOT NULL,
+--     end_date datetime2 NULL,
+--     assigned_by nvarchar(100) NULL,
+--     contract_url nvarchar(max) NULL,
+--     notes nvarchar(max) NULL,
+--     created_at datetime2 NOT NULL,
+--     updated_at datetime2 NULL,
+--     created_by nvarchar(100) NULL,
+--     updated_by nvarchar(100) NULL,
+--     CONSTRAINT pk_room_assignments PRIMARY KEY (id)
+-- );
+--
+-- CREATE INDEX idx_room_assignments_user_id ON room_assignments(user_id);
+-- CREATE INDEX idx_room_assignments_room_node_id ON room_assignments(room_node_id);
+--
+-- ALTER TABLE room_assignments
+--     ADD CONSTRAINT fk_room_assignments_user
+--     FOREIGN KEY (user_id) REFERENCES users(id);
+--
+-- ALTER TABLE room_assignments
+--     ADD CONSTRAINT fk_room_assignments_room_node
+--     FOREIGN KEY (room_node_id) REFERENCES building_nodes(id);
+--
+--

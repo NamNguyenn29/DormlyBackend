@@ -5,24 +5,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.Set;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-
-public class UserResponseDto {
+public class StudentProfileResponseDto {
     String id;
-    String email;
-    String fullName;
-    String phoneNumber;
-    LocalDateTime dateOfBirth;
-    Boolean isActive;
-    Set<String> roles;
-    String gender;
-    String avatar;
+    String studentCode;
+    String major;
+    String identityNumber;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
-    String createdBy;
-    String updatedBy;
 }
