@@ -14,6 +14,11 @@ import com.example.DormlyBackend.exception.factory.ExceptionFactory;
 import com.example.DormlyBackend.repository.RequestCodeRepository;
 import com.example.DormlyBackend.repository.RoleRepository;
 import com.example.DormlyBackend.repository.UserRepository;
+import com.example.DormlyBackend.entity.information.StudentProfile;
+import com.example.DormlyBackend.entity.information.StudentProfileHistory;
+import com.example.DormlyBackend.repository.StudentProfileRepository;
+import com.example.DormlyBackend.repository.StudentProfileHistoryRepository;
+import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.Cookie;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +52,9 @@ public class AuthService {
     private final RoleRepository roleRepository;
     private final RequestCodeRepository requestCodeRepository;
     private final  OAuth2AuthCodeStore oAuth2AuthCodeStore;
+    private final StudentProfileRepository studentProfileRepository;
+    private final StudentProfileHistoryRepository studentProfileHistoryRepository;
+    private final UserDocumentService userDocumentService;
 
 
     private final JwtService jwtService;
@@ -60,7 +68,7 @@ public class AuthService {
     @Value("${app.jwt.expiration-ms}")
     private long accessExpirationMs;
 
-    public void register(RegisterRequest request) {
+    public void register(RegisterRequest request, MultipartFile citizenIdFile, MultipartFile studentCardFile) {
         userRepository.findByEmail(request.getEmail())
                 .ifPresent(u -> {
                     throw ExceptionFactory.business(ErrorCode.USER_ALREADY_EXISTS, request.getEmail());
@@ -87,7 +95,103 @@ public class AuthService {
 
         user.setRoles(roles);
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // Save documents
+        if (citizenIdFile != null && !citizenIdFile.isEmpty()) {
+            userDocumentService.upsert(savedUser.getId(), "CCCD_FRONT", "PENDING", null, citizenIdFile);
+        }
+        if (studentCardFile != null && !studentCardFile.isEmpty()) {
+            userDocumentService.upsert(savedUser.getId(), "STUDENT_CARD", "PENDING", null, studentCardFile);
+        }
+
+        // Create student profile
+        StudentProfile profile = new StudentProfile();
+        profile.setId(savedUser.getId());
+        profile.setUser(savedUser);
+        profile.setStudentCode(request.getStudentCode());
+        profile.setMajor(request.getMajor());
+        profile.setIdentityNumber(request.getIdentityNumber());
+        profile.setStartYear(request.getStartYear());
+        profile.setEndYear(request.getEndYear());
+
+        // Raw preferences
+        profile.setSleepTime(request.getSleepTime());
+        profile.setWakeUpTime(request.getWakeUpTime());
+        profile.setSleepScore(request.getSleepScore());
+        profile.setWakeScore(request.getWakeScore());
+        profile.setQuietPreference(request.getQuietPreference());
+        profile.setQuietPreferenceScore(request.getQuietPreferenceScore());
+        profile.setSocialPreference(request.getSocialPreference());
+        profile.setSocialPreferenceScore(request.getSocialPreferenceScore());
+        profile.setStudyHabit(request.getStudyHabit());
+        profile.setStudyHabitScore(request.getStudyHabitScore());
+        profile.setRoutineStrictness(request.getRoutineStrictness());
+        profile.setRoutineStrictnessScore(request.getRoutineStrictnessScore());
+        profile.setAdaptability(request.getAdaptability());
+        profile.setAdaptabilityScore(request.getAdaptabilityScore());
+        profile.setRoommatePreference(request.getRoommatePreference());
+        profile.setFriendName(request.getFriendName());
+        profile.setFriendStudentId(request.getFriendStudentId());
+        profile.setFriendBlock(request.getFriendBlock());
+        profile.setFriendFloor(request.getFriendFloor());
+        profile.setFriendRoom(request.getFriendRoom());
+
+        // Calculate scores using PersonalityUtil
+        int sleepRhythm = com.example.DormlyBackend.util.PersonalityUtil.mapSleepTime(request.getSleepTime());
+        int wakeRhythm = com.example.DormlyBackend.util.PersonalityUtil.mapWakeTime(request.getWakeUpTime());
+        int quietPref = com.example.DormlyBackend.util.PersonalityUtil.mapPreference(request.getQuietPreference());
+        int socialPref = com.example.DormlyBackend.util.PersonalityUtil.mapPreference(request.getSocialPreference());
+        int studyHab = com.example.DormlyBackend.util.PersonalityUtil.mapPreference(request.getStudyHabit());
+        int routineStric = com.example.DormlyBackend.util.PersonalityUtil.mapPreference(request.getRoutineStrictness());
+        int adapt = com.example.DormlyBackend.util.PersonalityUtil.mapPreference(request.getAdaptability());
+
+        profile.setSleepRhythmScore(sleepRhythm);
+        profile.setWakeRhythmScore(wakeRhythm);
+        profile.setQuietPreferenceScore(quietPref);
+        profile.setSocialPreferenceScore(socialPref);
+        profile.setStudyHabitScore(studyHab);
+        profile.setRoutineStrictnessScore(routineStric);
+        profile.setAdaptabilityScore(adapt);
+
+        profile.setCalculationVersion("PERSONALITY_VECTOR_V1");
+        profile.setCalculatedAt(LocalDateTime.now());
+
+        StudentProfile savedProfile = studentProfileRepository.save(profile);
+
+        // Save profile history snapshot
+        StudentProfileHistory history = new StudentProfileHistory();
+        history.setStudentProfile(savedProfile);
+        history.setStartYear(savedProfile.getStartYear());
+        history.setEndYear(savedProfile.getEndYear());
+        history.setSleepTime(savedProfile.getSleepTime());
+        history.setWakeUpTime(savedProfile.getWakeUpTime());
+        history.setQuietPreference(savedProfile.getQuietPreference());
+        history.setSocialPreference(savedProfile.getSocialPreference());
+        history.setStudyHabit(savedProfile.getStudyHabit());
+        history.setRoutineStrictness(savedProfile.getRoutineStrictness());
+        history.setAdaptability(savedProfile.getAdaptability());
+        history.setRoommatePreference(savedProfile.getRoommatePreference());
+        history.setFriendName(savedProfile.getFriendName());
+        history.setFriendStudentId(savedProfile.getFriendStudentId());
+        history.setFriendBlock(savedProfile.getFriendBlock());
+        history.setFriendFloor(savedProfile.getFriendFloor());
+        history.setFriendRoom(savedProfile.getFriendRoom());
+
+        history.setSleepRhythmScore(savedProfile.getSleepRhythmScore());
+        history.setWakeRhythmScore(savedProfile.getWakeRhythmScore());
+        history.setQuietPreferenceScore(savedProfile.getQuietPreferenceScore());
+        history.setSocialPreferenceScore(savedProfile.getSocialPreferenceScore());
+        history.setStudyHabitScore(savedProfile.getStudyHabitScore());
+        history.setRoutineStrictnessScore(savedProfile.getRoutineStrictnessScore());
+        history.setAdaptabilityScore(savedProfile.getAdaptabilityScore());
+
+        history.setCalculationVersion(savedProfile.getCalculationVersion());
+        history.setCalculatedAt(savedProfile.getCalculatedAt());
+        history.setTriggerReason("INITIAL_REGISTRATION");
+        history.setChangedAt(LocalDateTime.now());
+
+        studentProfileHistoryRepository.save(history);
     }
 
     public AuthTokensResponse login(LoginRequest request, HttpServletResponse response) {

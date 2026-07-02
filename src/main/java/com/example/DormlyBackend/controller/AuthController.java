@@ -6,13 +6,21 @@ import com.example.DormlyBackend.dto.request.LoginRequest;
 import com.example.DormlyBackend.dto.request.RegisterRequest;
 import com.example.DormlyBackend.dto.response.ApiResponse;
 import com.example.DormlyBackend.dto.response.AuthTokensResponse;
+import com.example.DormlyBackend.exception.factory.ExceptionFactory;
+import com.example.DormlyBackend.exception.model.ValidationException;
 import com.example.DormlyBackend.service.AuthService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Valid;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -21,10 +29,35 @@ public class AuthController {
 
     private final AuthService authService;
     private final OAuth2AuthCodeStore oAuth2AuthCodeStore;
+    private final ObjectMapper objectMapper;
+    private final Validator validator;
 
-    @PostMapping("/register")
-    public ApiResponse<Void> register(@RequestBody @Valid RegisterRequest request) {
-        authService.register(request);
+    @PostMapping(value = "/register", consumes = { "multipart/form-data" })
+    public ApiResponse<Void> register(
+            @RequestPart("request") String requestJson,
+            @RequestPart("citizenIdFile") MultipartFile citizenIdFile,
+            @RequestPart("studentCardFile") MultipartFile studentCardFile) {
+        
+        RegisterRequest request;
+        try {
+            request = objectMapper.readValue(requestJson, RegisterRequest.class);
+        } catch (Exception e) {
+            throw ExceptionFactory.validation(List.of(new ValidationException.FieldError(
+                    "request", "Invalid request JSON format: " + e.getMessage(), requestJson)));
+        }
+
+        Set<ConstraintViolation<RegisterRequest>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            List<ValidationException.FieldError> fieldErrors = violations.stream()
+                    .map(v -> new ValidationException.FieldError(
+                            v.getPropertyPath().toString(), 
+                            v.getMessage(), 
+                            v.getInvalidValue() != null ? v.getInvalidValue().toString() : null))
+                    .toList();
+            throw ExceptionFactory.validation(fieldErrors);
+        }
+
+        authService.register(request, citizenIdFile, studentCardFile);
         return ApiResponse.<Void>builder().result(null).message("Register account success fully").build();
     }
 

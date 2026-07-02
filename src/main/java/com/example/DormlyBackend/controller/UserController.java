@@ -23,7 +23,6 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<UserResponseDto> create(@RequestBody @Valid UserRequest request) {
         var result = userService.create(request);
         return ApiResponse.<UserResponseDto>builder().message("User create successfully").result(result).build();

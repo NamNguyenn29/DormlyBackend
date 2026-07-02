@@ -22,7 +22,7 @@ public enum ErrorCode {
     USER_ALREADY_EXISTS("USR-002", HttpStatus.CONFLICT, "User with email {0} already exists"),
 
     //
-    PASSWORD_NOT_EQUAL("ERR-005", HttpStatus.BAD_REQUEST, "Old password and confirm password must be equal"),
+    PASSWORD_NOT_EQUAL("ERR-005", HttpStatus.BAD_REQUEST, "New password and confirm password must be equal"),
     WRONG_PASSWORD("ERR-006", HttpStatus.BAD_REQUEST, "Wrong password"),
     EMAIL_SEND_FAILED("ERR-007", HttpStatus.BAD_REQUEST, "Failed to send email");
 

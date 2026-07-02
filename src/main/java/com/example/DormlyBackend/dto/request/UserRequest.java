@@ -1,5 +1,6 @@
 package com.example.DormlyBackend.dto.request;
 
+import com.example.DormlyBackend.enums.Gender;
 import jakarta.persistence.Column;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -34,4 +35,5 @@ public class UserRequest {
 
     boolean isActive;
 
+    Gender gender;
 }
