@@ -3,6 +3,7 @@ package com.example.DormlyBackend.entity.authentication;
 import com.example.DormlyBackend.configuration.AuditMetaData;
 import com.example.DormlyBackend.entity.information.StudentProfile;
 import com.example.DormlyBackend.entity.information.UserDocument;
+import com.example.DormlyBackend.enums.Gender;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.*;
@@ -49,7 +50,8 @@ public class User {
 
     String refreshToken;
 
-    String gender;
+    @Enumerated(EnumType.STRING)
+    Gender gender;
 
     String avatar;
 

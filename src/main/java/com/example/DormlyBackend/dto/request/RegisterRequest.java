@@ -34,4 +34,33 @@ public class RegisterRequest {
 
     @NotBlank(message = "Registration code cannot be blank")
     String registrationCode;
+
+    // Profile fields
+    String studentCode;
+    String major;
+    String identityNumber;
+    Integer startYear;
+    Integer endYear;
+
+    // Lifestyle preference fields
+    String sleepTime;
+    String wakeUpTime;
+    Integer sleepScore;
+    Integer wakeScore;
+    Integer quietPreference;
+    Integer quietPreferenceScore;
+    Integer socialPreference;
+    Integer socialPreferenceScore;
+    Integer studyHabit;
+    Integer studyHabitScore;
+    Integer routineStrictness;
+    Integer routineStrictnessScore;
+    Integer adaptability;
+    Integer adaptabilityScore;
+    String roommatePreference;
+    String friendName;
+    String friendStudentId;
+    String friendBlock;
+    String friendFloor;
+    String friendRoom;
 }

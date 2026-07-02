@@ -10,6 +10,7 @@ import com.example.DormlyBackend.exception.factory.ExceptionFactory;
 import com.example.DormlyBackend.mapper.UserMapper;
 import com.example.DormlyBackend.repository.RoleRepository;
 import com.example.DormlyBackend.repository.UserRepository;
+import com.example.DormlyBackend.configuration.aop.Audit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -57,10 +58,10 @@ public class UserService {
                 .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "User", id));
 
         userMapper.updateUser(user, request);
-        if(request.getPassword() != null) {
+        if (request.getPassword() != null) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
-        if(request.getRoles() != null) {
+        if (request.getRoles() != null) {
             user.setRoles(resolveRolesByName(request.getRoles()));
         }
         user = userRepository.save(user);
@@ -86,15 +87,17 @@ public class UserService {
         return userMapper.toDto(user);
     }
 
+    @Audit(action = "UPDATE_PASSWORD", entityType = "USER", entityId = "#userId")
     public void updatePassword(UUID userId, ChangePasswordRequest request) {
-        User user = userRepository.findById(userId).orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.USER_NOT_FOUND, userId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.USER_NOT_FOUND, userId));
 
-        if(!request.getOldPassword().equals(request.getConfirmPassword())) {
-            throw ExceptionFactory.business(ErrorCode.PASSWORD_NOT_EQUAL,request.getConfirmPassword());
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw ExceptionFactory.business(ErrorCode.PASSWORD_NOT_EQUAL, request.getConfirmPassword());
         }
 
-        if(!user.getPassword().equals(passwordEncoder.encode(request.getOldPassword()))) {
-            throw ExceptionFactory.business(ErrorCode.PASSWORD_NOT_EQUAL,request.getConfirmPassword());
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw ExceptionFactory.business(ErrorCode.WRONG_PASSWORD, request.getConfirmPassword());
         }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
@@ -109,6 +112,5 @@ public class UserService {
                         .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "Role", name)))
                 .collect(java.util.stream.Collectors.toSet());
     }
-
 
 }

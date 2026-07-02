@@ -52,7 +52,6 @@ public class RoomAssignmentController {
         return ResponseEntity.ok(ApiResponse.<List<RoomAssignmentResponseDto>>builder().result(result).build());
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/assign-manual")
     public ResponseEntity<ApiResponse<RoomAssignmentResponseDto>> assignManual(
             @RequestBody @Valid RoomAssignmentRequest request) {
@@ -60,7 +59,6 @@ public class RoomAssignmentController {
         return ResponseEntity.ok(ApiResponse.<RoomAssignmentResponseDto>builder().result(result).build());
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/assign-auto")
     public ResponseEntity<ApiResponse<RoomAssignmentResponseDto>> assignAuto(
             @RequestParam UUID userId,

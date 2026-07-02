@@ -1,39 +1,28 @@
 package com.example.DormlyBackend.entity.information;
 
-import com.example.DormlyBackend.configuration.AuditMetaData;
-import com.example.DormlyBackend.entity.authentication.User;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "student_profiles")
+@Table(name = "student_profile_history")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@EntityListeners(AuditingEntityListener.class)
-public class StudentProfile {
+public class StudentProfileHistory {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     UUID id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    User user;
-
-    @Column(name = "student_code", length = 50)
-    String studentCode; // Mã số sinh viên
-
-    @Column(length = 100)
-    String major; // Ngành học
-
-    @Column(name = "identity_number", length = 20)
-    String identityNumber; // Số CCCD
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "student_profile_id", nullable = false)
+    StudentProfile studentProfile;
 
     @Column(name = "start_year")
     Integer startYear;
@@ -47,41 +36,20 @@ public class StudentProfile {
     @Column(name = "wake_up_time", length = 10)
     String wakeUpTime;
 
-    @Column(name = "sleep_score")
-    Integer sleepScore;
-
-    @Column(name = "wake_score")
-    Integer wakeScore;
-
     @Column(name = "quiet_preference")
     Integer quietPreference;
-
-    @Column(name = "quiet_preference_score")
-    Integer quietPreferenceScore;
 
     @Column(name = "social_preference")
     Integer socialPreference;
 
-    @Column(name = "social_preference_score")
-    Integer socialPreferenceScore;
-
     @Column(name = "study_habit")
     Integer studyHabit;
-
-    @Column(name = "study_habit_score")
-    Integer studyHabitScore;
 
     @Column(name = "routine_strictness")
     Integer routineStrictness;
 
-    @Column(name = "routine_strictness_score")
-    Integer routineStrictnessScore;
-
     @Column(name = "adaptability")
     Integer adaptability;
-
-    @Column(name = "adaptability_score")
-    Integer adaptabilityScore;
 
     @Column(name = "roommate_preference", length = 50)
     String roommatePreference;
@@ -107,12 +75,30 @@ public class StudentProfile {
     @Column(name = "wake_rhythm_score")
     Integer wakeRhythmScore;
 
+    @Column(name = "quiet_preference_score")
+    Integer quietPreferenceScore;
+
+    @Column(name = "social_preference_score")
+    Integer socialPreferenceScore;
+
+    @Column(name = "study_habit_score")
+    Integer studyHabitScore;
+
+    @Column(name = "routine_strictness_score")
+    Integer routineStrictnessScore;
+
+    @Column(name = "adaptability_score")
+    Integer adaptabilityScore;
+
     @Column(name = "calculation_version", length = 50)
     String calculationVersion;
 
     @Column(name = "calculated_at")
-    java.time.LocalDateTime calculatedAt;
+    LocalDateTime calculatedAt;
 
-    @Embedded
-    AuditMetaData audit = new AuditMetaData();
+    @Column(name = "trigger_reason", length = 50)
+    String triggerReason;
+
+    @Column(name = "changed_at", nullable = false)
+    LocalDateTime changedAt;
 }

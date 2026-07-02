@@ -52,4 +52,25 @@ public interface RoomAssignmentRepository extends JpaRepository<RoomAssignment, 
     List<RoomAssignment> findOccupancyAt(
             @Param("roomId") UUID roomId,
             @Param("at") LocalDateTime at);
+
+    @Query("""
+            SELECT ra
+            FROM RoomAssignment ra
+            WHERE ra.user.id = :userId
+              AND ra.startDate <= :at
+              AND (ra.endDate IS NULL OR ra.endDate > :at)
+            ORDER BY ra.startDate DESC
+            """)
+    Optional<RoomAssignment> findCurrentByUserIdAt(
+            @Param("userId") UUID userId,
+            @Param("at") LocalDateTime at);
+
+    @Query("""
+            SELECT ra
+            FROM RoomAssignment ra
+            WHERE ra.user.id = :userId
+            ORDER BY ra.startDate DESC
+            """)
+    List<RoomAssignment> findHistoryByUserId(
+            @Param("userId") UUID userId);
 }
