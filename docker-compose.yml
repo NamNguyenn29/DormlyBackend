@@ -89,7 +89,7 @@ services:
     restart: unless-stopped
 
   test:
-    image: eclipse-temurin:21-jdk
+    image: eclipse-temurin:17-jdk
     profiles:
       - test
     working_dir: /workspace
@@ -155,8 +155,13 @@ services:
       bash -c '
       SQLCMD="/opt/mssql-tools18/bin/sqlcmd";
       if [ ! -x "$$SQLCMD" ]; then SQLCMD="/opt/mssql-tools/bin/sqlcmd"; fi;
-      QUERY="IF DB_ID(N''$${DB_NAME}'') IS NULL CREATE DATABASE [$${DB_NAME}]; IF DB_ID(N''$${TEST_DB_NAME}'') IS NULL CREATE DATABASE [$${TEST_DB_NAME}];";
-      $$SQLCMD -S sqlserver -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "$$QUERY"
+      QUERY="IF DB_ID(N'\''$${DB_NAME}'\'') IS NULL CREATE DATABASE [$${DB_NAME}]; IF DB_ID(N'\''$${TEST_DB_NAME}'\'') IS NULL CREATE DATABASE [$${TEST_DB_NAME}];";
+      for i in {1..30}; do
+        echo "Attempting to initialize databases (attempt $$i)...";
+        $$SQLCMD -S sqlserver -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "$$QUERY" && exit 0;
+        sleep 2;
+      done;
+      exit 1;
       '
     depends_on:
       sqlserver:
