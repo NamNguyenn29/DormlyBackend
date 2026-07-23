@@ -14,8 +14,9 @@ RUN javac HealthCheck.java
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 RUN groupadd --system spring && useradd --system --gid spring spring
-COPY --from=build /workspace/target/*.jar app.jar
-COPY --from=healthcheck /healthcheck/HealthCheck.class /app/HealthCheck.class
+RUN chown -R spring:spring /app
+COPY --from=build --chown=spring:spring /workspace/target/*.jar app.jar
+COPY --from=healthcheck --chown=spring:spring /healthcheck/HealthCheck.class /app/HealthCheck.class
 USER spring:spring
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

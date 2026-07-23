@@ -118,19 +118,67 @@ public class RoomAssignmentService {
 
         StudentProfile studentProfile = studentProfileRepository.findByUserId(userId).orElse(null);
 
-        List<BuildingNode> candidates = buildingNodeRepository.findAll().stream()
-                .filter(r -> r.getNodeType().getLevel() == 4)
-                .filter(r -> r.getStatus() != null && "ENABLE".equalsIgnoreCase(r.getStatus()))
-                .filter(r -> r.getMaxCapacity() != null)
-                .filter(r -> r.getCurrentOccupancy() != null)
-                .filter(r -> r.getCurrentOccupancy() < r.getMaxCapacity())
-                .filter(r -> genderMatches(userGender, r.getGenderPolicy()))
-                .toList();
+        // Fetch all enabled rooms (level 4, ENABLE)
+        List<BuildingNode> candidates = buildingNodeRepository.findRoomsByLevelAndStatus(4, "ENABLE");
 
         if (candidates.isEmpty()) {
             throw ExceptionFactory.validation(
                     List.of(new com.example.DormlyBackend.exception.model.ValidationException.FieldError(
                             "room", "No eligible rooms available for auto assignment", null)));
+        }
+
+        // Batch pre-fetch overlapping assignments for all candidate rooms to eliminate N+1 queries
+        List<UUID> roomIds = candidates.stream().map(BuildingNode::getId).toList();
+        List<RoomAssignment> activeAssignments = roomAssignmentRepository.findOverlappingByRoomIds(roomIds, effectiveStart, endDate);
+
+        // Group assignments by room ID
+        java.util.Map<UUID, List<RoomAssignment>> assignmentsByRoom = activeAssignments.stream()
+                .collect(java.util.stream.Collectors.groupingBy(ra -> ra.getRoomNode().getId()));
+
+        // Collect occupant user IDs and batch-fetch their student profiles
+        List<UUID> residentUserIds = activeAssignments.stream()
+                .map(ra -> ra.getUser().getId())
+                .distinct()
+                .toList();
+
+        java.util.Map<UUID, StudentProfile> profileMap = java.util.Collections.emptyMap();
+        if (!residentUserIds.isEmpty()) {
+            List<StudentProfile> residentProfiles = studentProfileRepository.findByUser_IdIn(residentUserIds);
+            profileMap = residentProfiles.stream()
+                    .collect(java.util.stream.Collectors.toMap(p -> p.getUser().getId(), p -> p, (p1, p2) -> p1));
+        }
+
+        final java.util.Map<UUID, StudentProfile> finalProfileMap = profileMap;
+
+        // Filter candidate rooms based on gender policy, dynamic occupant genders, and dynamic time-range capacity
+        List<BuildingNode> eligibleCandidates = candidates.stream()
+                .filter(r -> {
+                    // Check capacity dynamically over the requested time interval
+                    List<RoomAssignment> active = assignmentsByRoom.getOrDefault(r.getId(), java.util.List.of());
+                    long maxCap = r.getMaxCapacity() != null ? r.getMaxCapacity() : 0L;
+                    if (!hasCapacity(active, effectiveStart, endDate, maxCap)) {
+                        return false;
+                    }
+
+                    // Check gender policy & dynamic occupant genders (preventing mixed-gender rooms)
+                    Gender policy = r.getGenderPolicy();
+                    if (policy != null) {
+                        return policy == userGender;
+                    }
+                    // If no explicit policy, ensure we do not mix genders
+                    if (active.isEmpty()) {
+                        return true;
+                    }
+                    return active.stream()
+                            .map(ra -> ra.getUser().getGender())
+                            .allMatch(g -> g == userGender);
+                })
+                .toList();
+
+        if (eligibleCandidates.isEmpty()) {
+            throw ExceptionFactory.validation(
+                    List.of(new com.example.DormlyBackend.exception.model.ValidationException.FieldError(
+                            "room", "No eligible rooms available due to capacity or gender compatibility policies", null)));
         }
 
         BuildingNode assignedRoom = null;
@@ -144,8 +192,8 @@ public class RoomAssignmentService {
                 if (friendAssignments != null && !friendAssignments.isEmpty()) {
                     RoomAssignment friendAssignment = friendAssignments.get(0);
                     BuildingNode friendRoom = friendAssignment.getRoomNode();
-                    // Check if friend's room is in our candidates list
-                    if (friendRoom != null && candidates.stream().anyMatch(c -> c.getId().equals(friendRoom.getId()))) {
+                    // Check if friend's room is in our eligible candidates list
+                    if (friendRoom != null && eligibleCandidates.stream().anyMatch(c -> c.getId().equals(friendRoom.getId()))) {
                         assignedRoom = friendRoom;
                         log.info("Assigned user {} to room {} due to friend preference ({})", userId, friendRoom.getId(), studentProfile.getFriendStudentId());
                     }
@@ -156,14 +204,15 @@ public class RoomAssignmentService {
         // 2. Personality-based compatibility assignment
         if (assignedRoom == null) {
             if (studentProfile != null && studentProfile.getSleepRhythmScore() != null) {
-                assignedRoom = candidates.stream()
-                        .max(Comparator.comparingDouble(r -> calculateRoomCompatibility(studentProfile, r)))
-                        .orElse(candidates.get(0));
+                final StudentProfile prof = studentProfile;
+                assignedRoom = eligibleCandidates.stream()
+                        .max(Comparator.comparingDouble(r -> calculateRoomCompatibility(prof, assignmentsByRoom.getOrDefault(r.getId(), java.util.List.of()), finalProfileMap)))
+                        .orElse(eligibleCandidates.get(0));
             } else {
-                // Fall back to original logic (lowest occupancy first)
-                assignedRoom = candidates.stream()
-                        .min(Comparator.comparingLong(r -> r.getCurrentOccupancy() == null ? 0L : r.getCurrentOccupancy()))
-                        .orElse(candidates.get(0));
+                // Fall back to lowest occupancy first during the requested interval
+                assignedRoom = eligibleCandidates.stream()
+                        .min(Comparator.comparingLong(r -> (long) assignmentsByRoom.getOrDefault(r.getId(), java.util.List.of()).size()))
+                        .orElse(eligibleCandidates.get(0));
             }
         }
 
@@ -182,28 +231,28 @@ public class RoomAssignmentService {
 
     private double calculateCompatibility(StudentProfile a, StudentProfile b) {
         if (a == null || b == null) return 100.0;
-        
+
         int sleepA = a.getSleepRhythmScore() != null ? a.getSleepRhythmScore() : 50;
         int sleepB = b.getSleepRhythmScore() != null ? b.getSleepRhythmScore() : 50;
-        
+
         int wakeA = a.getWakeRhythmScore() != null ? a.getWakeRhythmScore() : 50;
         int wakeB = b.getWakeRhythmScore() != null ? b.getWakeRhythmScore() : 50;
-        
+
         int quietA = a.getQuietPreferenceScore() != null ? a.getQuietPreferenceScore() : 50;
         int quietB = b.getQuietPreferenceScore() != null ? b.getQuietPreferenceScore() : 50;
-        
+
         int socialA = a.getSocialPreferenceScore() != null ? a.getSocialPreferenceScore() : 50;
         int socialB = b.getSocialPreferenceScore() != null ? b.getSocialPreferenceScore() : 50;
-        
+
         int studyA = a.getStudyHabitScore() != null ? a.getStudyHabitScore() : 50;
         int studyB = b.getStudyHabitScore() != null ? b.getStudyHabitScore() : 50;
-        
+
         int routineA = a.getRoutineStrictnessScore() != null ? a.getRoutineStrictnessScore() : 50;
         int routineB = b.getRoutineStrictnessScore() != null ? b.getRoutineStrictnessScore() : 50;
-        
+
         int adaptA = a.getAdaptabilityScore() != null ? a.getAdaptabilityScore() : 50;
         int adaptB = b.getAdaptabilityScore() != null ? b.getAdaptabilityScore() : 50;
-        
+
         double sumDiff = Math.abs(sleepA - sleepB)
                 + Math.abs(wakeA - wakeB)
                 + Math.abs(quietA - quietB)
@@ -211,36 +260,76 @@ public class RoomAssignmentService {
                 + Math.abs(studyA - studyB)
                 + Math.abs(routineA - routineB)
                 + Math.abs(adaptA - adaptB);
-        
+
         double avgDiff = sumDiff / 7.0;
         return 100.0 - avgDiff;
     }
 
-    private double calculateRoomCompatibility(StudentProfile studentProfile, BuildingNode room) {
-        List<RoomAssignment> activeAssignments = roomAssignmentRepository.findActiveByRoomId(room.getId());
-        
-        if (activeAssignments == null || activeAssignments.isEmpty()) {
+    private double calculateRoomCompatibility(StudentProfile studentProfile, List<RoomAssignment> active, java.util.Map<UUID, StudentProfile> profileMap) {
+        if (active == null || active.isEmpty()) {
             return 100.0;
         }
-        
+
         double totalCompatibility = 0.0;
         int count = 0;
-        
-        for (RoomAssignment assignment : activeAssignments) {
+
+        for (RoomAssignment assignment : active) {
             if (assignment.getUser() == null) continue;
-            StudentProfile residentProfile = studentProfileRepository.findByUserId(assignment.getUser().getId()).orElse(null);
+            StudentProfile residentProfile = profileMap.get(assignment.getUser().getId());
             if (residentProfile != null) {
                 totalCompatibility += calculateCompatibility(studentProfile, residentProfile);
                 count++;
             }
         }
-        
+
         if (count == 0) {
             return 100.0;
         }
-        
+
         return totalCompatibility / count;
     }
+
+    private boolean hasCapacity(List<RoomAssignment> active, LocalDateTime start, LocalDateTime end, long maxCapacity) {
+        List<CapacityEvent> events = new java.util.ArrayList<>();
+        // Add the new assignment itself
+        events.add(new CapacityEvent(start, 1));
+        if (end != null) {
+            events.add(new CapacityEvent(end, -1));
+        }
+
+        for (RoomAssignment ra : active) {
+            events.add(new CapacityEvent(ra.getStartDate(), 1));
+            if (ra.getEndDate() != null) {
+                events.add(new CapacityEvent(ra.getEndDate(), -1));
+            }
+        }
+
+        // Sort events chronologically. Process departures (-1) before arrivals (1) when times are equal.
+        events.sort((e1, e2) -> {
+            int cmp = e1.time.compareTo(e2.time);
+            if (cmp != 0) return cmp;
+            return Integer.compare(e1.type, e2.type);
+        });
+
+        int current = 0;
+        for (CapacityEvent e : events) {
+            current += e.type;
+            if (current > maxCapacity) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static class CapacityEvent {
+        LocalDateTime time;
+        int type;
+        CapacityEvent(LocalDateTime time, int type) {
+            this.time = time;
+            this.type = type;
+        }
+    }
+
 
     private void validateAndIncrementOccupancy(BuildingNode room, Long increment) {
         if (room.getMaxCapacity() == null) {
