@@ -73,4 +73,26 @@ public interface RoomAssignmentRepository extends JpaRepository<RoomAssignment, 
             """)
     List<RoomAssignment> findHistoryByUserId(
             @Param("userId") UUID userId);
+
+    @Query("""
+            SELECT ra
+            FROM RoomAssignment ra
+            JOIN FETCH ra.user
+            WHERE ra.roomNode.id IN :roomIds
+              AND ra.endDate IS NULL
+            """)
+    List<RoomAssignment> findActiveByRoomIds(@Param("roomIds") List<UUID> roomIds);
+
+    @Query("""
+            SELECT ra
+            FROM RoomAssignment ra
+            JOIN FETCH ra.user
+            WHERE ra.roomNode.id IN :roomIds
+              AND (:endDate IS NULL OR ra.startDate < :endDate)
+              AND (ra.endDate IS NULL OR ra.endDate > :startDate)
+            """)
+    List<RoomAssignment> findOverlappingByRoomIds(
+            @Param("roomIds") List<UUID> roomIds,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
 }
