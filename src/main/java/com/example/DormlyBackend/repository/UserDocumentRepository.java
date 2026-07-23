@@ -16,6 +16,6 @@ public interface UserDocumentRepository extends JpaRepository<UserDocument, UUID
     @Query("SELECT d FROM UserDocument d JOIN FETCH d.user WHERE d.fileUrl = :fileUrl")
     Optional<UserDocument> findByFileUrlWithUser(@Param("fileUrl") String fileUrl);
 
-    @Query("SELECT d FROM UserDocument d JOIN FETCH d.user WHERE d.fileUrl = CONCAT('' , :fileSuffix)")
+    @Query("SELECT d FROM UserDocument d JOIN FETCH d.user WHERE d.fileUrl LIKE CONCAT('%', :fileSuffix)")
     Optional<UserDocument> findByFileUrlWithUserBySuffix(@Param("fileSuffix") String fileSuffix);
 }
