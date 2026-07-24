@@ -39,4 +39,10 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     """)
     Optional<User> findByEmailWithRolesAndPermissions(@Param("email") String email);
 
+    @Query("""
+            SELECT DISTINCT u FROM User u
+            JOIN u.roles r
+            WHERE UPPER(r.name) IN :roleNames
+            """)
+    java.util.List<User> findByRoleNameIn(@Param("roleNames") java.util.Set<String> roleNames);
 }
