@@ -1,63 +1,39 @@
 package com.example.DormlyBackend.service;
 
+import com.example.DormlyBackend.storage.FileStorageService;
+import com.example.DormlyBackend.storage.FileValidationException;
+import com.example.DormlyBackend.storage.StoredFile;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.Set;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class UserDocumentFileStorageService {
 
-    // Store on local filesystem under the project directory (works with Spring Boot
-    // default static handling if configured).
-    // We do NOT write to src/main/resources at runtime.
-    private final Path rootDir = Paths.get("uploads", "user-documents");
+    public static final String SUBDIR = "user-documents";
+    public static final String URL_PREFIX = "/uploads/user-documents/";
 
+    private static final Set<String> ALLOWED_TYPES = Set.of(
+            "image/png", "image/jpeg", "image/gif", "image/webp");
+    private static final long MAX_BYTES = 5L * 1024 * 1024;
 
-    private final String urlPrefix = "/uploads/user-documents/";
+    private final FileStorageService fileStorage;
 
+    /**
+     * Unchanged public contract: returns the same /uploads/user-documents/<uuid>.<ext>
+     * URL shape and still throws IllegalArgumentException for an invalid file.
+     */
     public String store(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("File is required");
-        }
-
-        log.info(String.valueOf(rootDir));
-
-        String contentType = file.getContentType();
-        // Basic validation: allow common image types
-        if (contentType != null && !contentType.startsWith("image/")) {
-            throw new IllegalArgumentException("File must be an image");
-        }
-
         try {
-            Files.createDirectories(rootDir);
-
-            String original = file.getOriginalFilename();
-            String ext = (original != null && original.contains("."))
-                    ? original.substring(original.lastIndexOf('.') + 1)
-                    : "img";
-
-            String storedName = UUID.randomUUID() + (ext.isBlank() ? "" : "." + ext);
-            Path target = rootDir.resolve(storedName);
-
-            try (InputStream in = file.getInputStream()) {
-                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
-            }
-
-            return urlPrefix + storedName;
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to store file", e);
+            StoredFile stored = fileStorage.store(file, SUBDIR, ALLOWED_TYPES, MAX_BYTES);
+            return URL_PREFIX + stored.storedName();
+        } catch (FileValidationException e) {
+            throw new IllegalArgumentException(e.getMessage(), e);
         }
     }
 }

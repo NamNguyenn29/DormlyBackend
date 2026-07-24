@@ -3,6 +3,8 @@ package com.example.DormlyBackend.controller;
 import com.example.DormlyBackend.configuration.security.UserPrincipal;
 import com.example.DormlyBackend.entity.information.UserDocument;
 import com.example.DormlyBackend.repository.UserDocumentRepository;
+import com.example.DormlyBackend.service.UserDocumentFileStorageService;
+import com.example.DormlyBackend.storage.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -29,10 +31,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FileServeController {
 
-    @Value("${app.upload.dir:uploads/user-documents}")
-    private String uploadDir;
-
     private final UserDocumentRepository documentRepo;
+    private final FileStorageService fileStorage;
 
     @GetMapping("/uploads/user-documents/{filename}")
     public ResponseEntity<Resource> serveFile(
@@ -60,21 +60,13 @@ public class FileServeController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        // 3. Path traversal guard
-        Path rootPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-        Path filePath = rootPath.resolve(filename).normalize();
-        System.out.println("[FileServeController] filePath=" + filePath);
-        if (!filePath.startsWith(rootPath)) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        // 4. Stream file
-        Resource resource = new UrlResource(filePath.toUri());
+        // 3. Load through the shared storer, which owns the traversal guard
+        Resource resource = fileStorage.load(UserDocumentFileStorageService.SUBDIR, filename);
         if (!resource.exists() || !resource.isReadable()) {
             return ResponseEntity.notFound().build();
         }
 
-        String contentType = Files.probeContentType(filePath);
+        String contentType = Files.probeContentType(Path.of(resource.getURI()));
         if (contentType == null)
             contentType = "application/octet-stream";
 
