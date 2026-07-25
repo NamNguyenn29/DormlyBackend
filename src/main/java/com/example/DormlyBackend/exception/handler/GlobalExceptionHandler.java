@@ -100,6 +100,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMaxUploadSizeExceeded(org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+        log.warn("Max upload size exceeded [traceId={}]: {}", traceId(), ex.getMessage());
+        var body = ApiResponse.<Void>builder()
+                .code(HttpStatus.PAYLOAD_TOO_LARGE.value())
+                .message("Upload payload size limit exceeded")
+                .build();
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(body);
+    }
+
     private ResponseEntity<ApiResponse<Void>> buildError(BaseException ex) {
         var body = ApiResponse.<Void>builder()
                 .code(ex.getErrorCode().getHttpStatus().value())

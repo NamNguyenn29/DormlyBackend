@@ -134,6 +134,20 @@ public class AuditLogAspect {
             return;
         }
 
+        // Ticket read paths run on every page load; mutations are still audited
+        // via @Audit(entityType = "TICKET").
+        if (("TICKETME".equalsIgnoreCase(entityType) || "TICKETADMIN".equalsIgnoreCase(entityType))
+                && "READ".equalsIgnoreCase(action)) {
+            return;
+        }
+
+        // Cron and event-driven fan-out have no authenticated principal, so every
+        // run would write rows with a null userId and no meaning.
+        if ("TICKETOVERDUESCHEDULER".equalsIgnoreCase(entityType)
+                || "TICKETNOTIFICATIONPUBLISHER".equalsIgnoreCase(entityType)) {
+            return;
+        }
+
         try {
 
             HttpServletRequest httpRequest = getCurrentRequest();

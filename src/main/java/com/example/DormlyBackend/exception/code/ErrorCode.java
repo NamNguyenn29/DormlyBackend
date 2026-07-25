@@ -24,7 +24,18 @@ public enum ErrorCode {
     //
     PASSWORD_NOT_EQUAL("ERR-005", HttpStatus.BAD_REQUEST, "New password and confirm password must be equal"),
     WRONG_PASSWORD("ERR-006", HttpStatus.BAD_REQUEST, "Wrong password"),
-    EMAIL_SEND_FAILED("ERR-007", HttpStatus.BAD_REQUEST, "Failed to send email");
+    EMAIL_SEND_FAILED("ERR-007", HttpStatus.BAD_REQUEST, "Failed to send email"),
+
+    // --- Ticket support ---
+    TICKET_NOT_FOUND("TKT-001", HttpStatus.NOT_FOUND, "Ticket not found"),
+    TICKET_INVALID_TRANSITION("TKT-002", HttpStatus.BAD_REQUEST, "Cannot move a ticket from {0} to {1}"),
+    TICKET_RESOLUTION_NOTE_REQUIRED("TKT-003", HttpStatus.BAD_REQUEST, "A resolution note is required to {0} a ticket"),
+    TICKET_ASSIGNEE_NOT_STAFF("TKT-004", HttpStatus.BAD_REQUEST, "User {0} is not an admin or staff member"),
+    TICKET_ATTACHMENT_LIMIT("TKT-005", HttpStatus.BAD_REQUEST, "At most {0} attachments are allowed"),
+    TICKET_ATTACHMENT_TYPE("TKT-006", HttpStatus.BAD_REQUEST, "Unsupported attachment type: {0}"),
+    TICKET_ATTACHMENT_TOO_LARGE("TKT-007", HttpStatus.PAYLOAD_TOO_LARGE, "Attachment exceeds the {0}MB limit"),
+    TICKET_CLOSED_TO_COMMENTS("TKT-008", HttpStatus.BAD_REQUEST, "This ticket is settled and takes no further comments"),
+    TICKET_ACCESS_DENIED("TKT-009", HttpStatus.FORBIDDEN, "You do not have access to this ticket");
 
 
     private final String code;
