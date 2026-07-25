@@ -9,6 +9,7 @@ import com.example.DormlyBackend.enums.TicketStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.BatchSize;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
@@ -69,6 +70,7 @@ public class Ticket {
             name = "ticket_assignees",
             joinColumns = @JoinColumn(name = "ticket_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id"))
+    @BatchSize(size = 30)
     Set<User> assignees = new LinkedHashSet<>();
 
     @Lob

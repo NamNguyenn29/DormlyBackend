@@ -17,6 +17,10 @@ public interface TicketAttachmentRepository extends JpaRepository<TicketAttachme
 
     List<TicketAttachment> findByComment_Id(UUID commentId);
 
+    List<TicketAttachment> findByTicket_IdAndCommentIsNotNull(UUID ticketId);
+
+    List<TicketAttachment> findByTicket_IdAndCommentIsNull(UUID ticketId);
+
     @Query("""
             SELECT a FROM TicketAttachment a
             JOIN FETCH a.ticket t

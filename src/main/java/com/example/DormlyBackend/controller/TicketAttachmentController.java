@@ -11,6 +11,7 @@ import com.example.DormlyBackend.service.ticket.TicketAttachmentService;
 import com.example.DormlyBackend.storage.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -55,10 +56,13 @@ public class TicketAttachmentController {
         String contentType = attachment.getContentType();
         String disposition = INLINE_TYPES.contains(contentType) ? "inline" : "attachment";
 
+        ContentDisposition contentDisposition = ContentDisposition.builder(disposition)
+                .filename(attachment.getOriginalFilename())
+                .build();
+
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        disposition + "; filename=\"" + attachment.getOriginalFilename() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition.toString())
                 .body(resource);
     }
 

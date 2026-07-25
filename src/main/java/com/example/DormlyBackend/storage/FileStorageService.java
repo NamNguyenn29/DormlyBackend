@@ -1,6 +1,7 @@
 package com.example.DormlyBackend.storage;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -28,6 +29,7 @@ public class FileStorageService {
 
     private final Path rootDir;
 
+    @Autowired
     public FileStorageService(@Value("${app.storage.root:uploads}") String root) {
         this(Paths.get(root));
     }

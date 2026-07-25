@@ -21,7 +21,9 @@ import java.util.UUID;
 public interface TicketRepository extends JpaRepository<Ticket, UUID> {
 
     @Query("""
-            SELECT t FROM Ticket t
+            SELECT DISTINCT t FROM Ticket t
+            LEFT JOIN FETCH t.reporter
+            LEFT JOIN FETCH t.assignees
             WHERE t.reporter.id = :reporterId
               AND (:status IS NULL OR t.status = :status)
             ORDER BY t.auditMetaData.createdAt DESC
@@ -63,7 +65,9 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
                         Pageable pageable);
 
     @Query("""
-            SELECT t FROM Ticket t
+            SELECT DISTINCT t FROM Ticket t
+            LEFT JOIN FETCH t.reporter
+            LEFT JOIN FETCH t.assignees
             ORDER BY t.priority DESC, t.auditMetaData.createdAt DESC
             """)
     List<Ticket> findAllForBoard();
@@ -72,7 +76,7 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
      * Mirrors TicketOverdueRule.shouldAlert. Keep the two in step.
      */
     @Query("""
-            SELECT t FROM Ticket t
+            SELECT DISTINCT t FROM Ticket t
             LEFT JOIN FETCH t.assignees
             WHERE t.dueDate IS NOT NULL
               AND t.dueDate < :today

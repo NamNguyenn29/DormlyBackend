@@ -3,6 +3,7 @@ package com.example.DormlyBackend.service.ticket;
 import com.example.DormlyBackend.dto.response.TicketCommentResponseDto;
 import com.example.DormlyBackend.entity.authentication.User;
 import com.example.DormlyBackend.entity.ticket.Ticket;
+import com.example.DormlyBackend.entity.ticket.TicketAttachment;
 import com.example.DormlyBackend.entity.ticket.TicketComment;
 import com.example.DormlyBackend.mapper.TicketAttachmentMapper;
 import com.example.DormlyBackend.mapper.TicketCommentMapper;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -40,10 +42,17 @@ public class TicketCommentService {
 
     @Transactional(readOnly = true)
     public List<TicketCommentResponseDto> listComments(UUID ticketId, boolean includeInternal) {
-        return commentRepository.findByTicket(ticketId, includeInternal).stream()
+        List<TicketComment> comments = commentRepository.findByTicket(ticketId, includeInternal);
+
+        Map<UUID, List<TicketAttachment>> attachmentsByCommentId = attachmentService.findCommentLevelByTicket(ticketId)
+                .stream()
+                .collect(Collectors.groupingBy(a -> a.getComment().getId()));
+
+        return comments.stream()
                 .map(comment -> commentMapper.toDto(
                         comment,
-                        attachmentMapper.toDtoList(attachmentService.findByComment(comment.getId()))))
+                        attachmentMapper.toDtoList(
+                                attachmentsByCommentId.getOrDefault(comment.getId(), List.of()))))
                 .collect(Collectors.toList());
     }
 }

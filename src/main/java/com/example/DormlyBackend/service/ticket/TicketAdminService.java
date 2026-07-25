@@ -203,7 +203,7 @@ public class TicketAdminService {
     private TicketDetailResponseDto toDetail(Ticket ticket) {
         return ticketMapper.toDetail(
                 ticket,
-                attachmentMapper.toDtoList(attachmentService.findByTicket(ticket.getId())),
+                attachmentMapper.toDtoList(attachmentService.findTicketLevelByTicket(ticket.getId())),
                 commentService.listComments(ticket.getId(), true));
     }
 }

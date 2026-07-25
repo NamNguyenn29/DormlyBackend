@@ -122,7 +122,7 @@ public class TicketMeService {
     private TicketDetailResponseDto toDetail(Ticket ticket, boolean includeInternal) {
         return ticketMapper.toDetail(
                 ticket,
-                attachmentMapper.toDtoList(attachmentService.findByTicket(ticket.getId())),
+                attachmentMapper.toDtoList(attachmentService.findTicketLevelByTicket(ticket.getId())),
                 commentService.listComments(ticket.getId(), includeInternal));
     }
 }

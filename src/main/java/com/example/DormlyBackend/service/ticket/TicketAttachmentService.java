@@ -84,6 +84,23 @@ public class TicketAttachmentService {
         return attachmentRepository.findByComment_Id(commentId);
     }
 
+    /**
+     * All comment-level attachments for a ticket, in one query. Used to build an
+     * in-memory map keyed by comment id instead of querying per comment.
+     */
+    public List<TicketAttachment> findCommentLevelByTicket(java.util.UUID ticketId) {
+        return attachmentRepository.findByTicket_IdAndCommentIsNotNull(ticketId);
+    }
+
+    /**
+     * Ticket-level attachments only (comment IS NULL). Use this for the top-level
+     * "attachments" field on a ticket detail response so comment attachments are
+     * not duplicated there.
+     */
+    public List<TicketAttachment> findTicketLevelByTicket(java.util.UUID ticketId) {
+        return attachmentRepository.findByTicket_IdAndCommentIsNull(ticketId);
+    }
+
     public void removeAttachment(TicketAttachment attachment) {
         attachmentRepository.delete(attachment);
         fileStorage.delete(SUBDIR, attachment.getStoredName());
