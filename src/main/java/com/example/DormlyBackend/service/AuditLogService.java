@@ -13,11 +13,14 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import com.example.DormlyBackend.repository.UserRepository;
+
 @Service
 @RequiredArgsConstructor
 public class AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
+    private final UserRepository userRepository;
 
     public AuditLogResponseDto create(
             AuditLogCreateRequest request,
@@ -39,18 +42,7 @@ public class AuditLogService {
 
         AuditLog saved = auditLogRepository.save(entity);
 
-        return AuditLogResponseDto.builder()
-                .id(saved.getId())
-                .userId(saved.getUserId())
-                .action(saved.getAction())
-                .entityType(saved.getEntityType())
-                .entityId(saved.getEntityId())
-                .oldValues(saved.getOldValues())
-                .newValues(saved.getNewValues())
-                .ipAddress(saved.getIpAddress())
-                .userAgent(saved.getUserAgent())
-                .createdAt(saved.getCreatedAt())
-                .build();
+        return mapToDto(saved);
     }
 
     public Page<AuditLogResponseDto> search(
@@ -62,18 +54,34 @@ public class AuditLogService {
             LocalDateTime to,
             Pageable pageable) {
         return auditLogRepository.search(userId, action, entityType, entityId, from, to, pageable)
-                .map(a -> AuditLogResponseDto.builder()
-                        .id(a.getId())
-                        .userId(a.getUserId())
-                        .action(a.getAction())
-                        .entityType(a.getEntityType())
-                        .entityId(a.getEntityId())
-                        .oldValues(a.getOldValues())
-                        .newValues(a.getNewValues())
-                        .ipAddress(a.getIpAddress())
-                        .userAgent(a.getUserAgent())
-                        .createdAt(a.getCreatedAt())
-                        .build());
+                .map(this::mapToDto);
+    }
+
+    private AuditLogResponseDto mapToDto(AuditLog saved) {
+        String email = null;
+        String fullName = null;
+        if (saved.getUserId() != null) {
+            var userOpt = userRepository.findById(saved.getUserId());
+            if (userOpt.isPresent()) {
+                email = userOpt.get().getEmail();
+                fullName = userOpt.get().getFullName();
+            }
+        }
+
+        return AuditLogResponseDto.builder()
+                .id(saved.getId())
+                .userId(saved.getUserId())
+                .userEmail(email)
+                .userFullName(fullName)
+                .action(saved.getAction())
+                .entityType(saved.getEntityType())
+                .entityId(saved.getEntityId())
+                .oldValues(saved.getOldValues())
+                .newValues(saved.getNewValues())
+                .ipAddress(saved.getIpAddress())
+                .userAgent(saved.getUserAgent())
+                .createdAt(saved.getCreatedAt())
+                .build();
     }
 
     private String extractIp(HttpServletRequest request) {

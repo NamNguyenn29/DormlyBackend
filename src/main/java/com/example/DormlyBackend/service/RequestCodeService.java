@@ -8,20 +8,27 @@ import com.example.DormlyBackend.repository.RequestCodeRepository;
 import com.example.DormlyBackend.service.notification.EmailSender;
 import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import jakarta.transaction.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RequestCodeService {
     private final RequestCodeRepository requestCodeRepository;
     private final EmailSender emailSender;
 
     private static final SecureRandom random = new SecureRandom();
 
+    @Transactional
     public void sendRegisterCode(String email)   {
+        // Clean up old codes for this email to avoid confusion
+        requestCodeRepository.deleteByRecipientContactAndPurpose(email, PurposeCode.REGISTRATION);
+
         String code = generate6DigitCode();
         RequestCode requestCode = new RequestCode();
         requestCode.setPurpose(PurposeCode.REGISTRATION);
@@ -29,6 +36,8 @@ public class RequestCodeService {
         requestCode.setRecipientContact(email);
         requestCode.setCode(code);
         requestCodeRepository.save(requestCode);
+
+        log.info("[DEV] Registration OTP for {}: {}", email, code);
 
         try {
             emailSender.sendRegistrationCode(email, code);

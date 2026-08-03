@@ -92,7 +92,7 @@ public class AuditLogAspect {
         Object result = joinPoint.proceed();
 
         String entityId = resolveEntityIdFromSpEL(audit.entityId(), joinPoint, result);
-        log(currentUserId, audit.action(), audit.entityType(), entityId);
+        log(currentUserId, audit.action(), audit.entityType(), entityId, result);
         return result;
     }
 
@@ -109,7 +109,7 @@ public class AuditLogAspect {
         Object result = joinPoint.proceed();
 
         String entityId = resolveEntityId(result, joinPoint.getArgs(), action);
-        log(currentUserId, action, entityType, entityId);
+        log(currentUserId, action, entityType, entityId, result);
         return result;
     }
 
@@ -121,7 +121,7 @@ public class AuditLogAspect {
         }
     }
 
-    private void log(UUID userId, String action, String entityType, String entityId) {
+    private void log(UUID userId, String action, String entityType, String entityId, Object result) {
 
         // Hard skip: noisy JWT internals should never create audit rows.
         log.debug("AUDIT action={}, entityType={}, entityId={} userId={} ", action, entityType, entityId, userId);
@@ -179,17 +179,11 @@ public class AuditLogAspect {
                 }
 
             } else if ("UPDATE".equalsIgnoreCase(action) && entityId != null && !entityId.isBlank()) {
-
-                // Currently we only know how to snapshot for USER updates because we have
-                // UserRepository.
-                // This can be extended by adding a registry mapping entityType -> repository.
-                // NOTE: This generic snapshot diff requires helper methods to find + serialize
-                // entities.
-                // For now keep safe placeholders (null) until we add a scalable entity
-                // snapshot/serializer registry.
                 req.setOldValues(null);
-                req.setNewValues(null);
-
+                req.setNewValues(safeToJson(result));
+            } else if ("CREATE".equalsIgnoreCase(action)) {
+                req.setOldValues(null);
+                req.setNewValues(safeToJson(result));
             } else {
                 req.setOldValues(null);
                 req.setNewValues(null);

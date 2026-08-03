@@ -5,6 +5,7 @@ import java.util.List;
 import com.example.DormlyBackend.configuration.security.oauth2.CustomOAuth2UserService;
 import com.example.DormlyBackend.configuration.security.oauth2.OAuth2FailureHandler;
 import com.example.DormlyBackend.configuration.security.oauth2.OAuth2SuccessHandler;
+import com.example.DormlyBackend.configuration.security.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -38,6 +39,7 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2SuccessHandler successHandler;
     private final OAuth2FailureHandler failureHandler;
+    private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
 
 
     private static final String[] PUBLIC_URLS = {
@@ -75,6 +77,8 @@ public class SecurityConfig {
                         .requestMatchers(PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
+                        .authorizationEndpoint(authorization -> authorization
+                                .authorizationRequestRepository(cookieAuthorizationRequestRepository))
                         .userInfoEndpoint(ui -> ui.userService(customOAuth2UserService))
                         .successHandler(successHandler)
                         .failureHandler(failureHandler)

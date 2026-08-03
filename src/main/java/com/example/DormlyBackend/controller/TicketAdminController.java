@@ -28,7 +28,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.Validator;
+import jakarta.validation.ConstraintViolation;
+import com.example.DormlyBackend.exception.model.ValidationException;
 
 @RestController
 @RequestMapping("/api/tickets")
@@ -37,6 +42,8 @@ import java.util.UUID;
 public class TicketAdminController {
 
     private final TicketAdminService ticketAdminService;
+    private final ObjectMapper objectMapper;
+    private final Validator validator;
 
     @GetMapping
     public ApiResponse<Page<TicketSummaryResponseDto>> list(
@@ -118,13 +125,37 @@ public class TicketAdminController {
     @PostMapping(value = "/{ticketId}/comments", consumes = { "multipart/form-data" })
     public ApiResponse<TicketCommentResponseDto> comment(
             @PathVariable UUID ticketId,
-            @RequestPart("data") @Valid CreateTicketCommentRequest data,
+            @RequestPart("data") String dataJson,
             @RequestPart(value = "files", required = false) MultipartFile[] files) {
+
+        CreateTicketCommentRequest data = parseAndValidate(dataJson, CreateTicketCommentRequest.class);
 
         return ApiResponse.<TicketCommentResponseDto>builder()
                 .message("Comment added")
                 .result(ticketAdminService.addComment(currentUserId(), ticketId, data, files))
                 .build();
+    }
+
+    private <T> T parseAndValidate(String json, Class<T> clazz) {
+        T request;
+        try {
+            request = objectMapper.readValue(json, clazz);
+        } catch (Exception e) {
+            throw ExceptionFactory.validation(List.of(new ValidationException.FieldError(
+                    "data", "Invalid JSON format: " + e.getMessage(), json)));
+        }
+
+        Set<ConstraintViolation<T>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            List<ValidationException.FieldError> fieldErrors = violations.stream()
+                    .map(v -> new ValidationException.FieldError(
+                            v.getPropertyPath().toString(),
+                            v.getMessage(),
+                            v.getInvalidValue() == null ? null : v.getInvalidValue().toString()))
+                    .toList();
+            throw ExceptionFactory.validation(fieldErrors);
+        }
+        return request;
     }
 
     private UUID currentUserId() {
