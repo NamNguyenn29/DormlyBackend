@@ -57,8 +57,8 @@ public class UserController {
         return ApiResponse.<List<UserResponseDto>>builder().result(result).message("Get users successfully").build();
     }
 
-    @PatchMapping("toggle/{/id}")
-    public ApiResponse<UserResponseDto> toggleUserStatus(UUID id) {
+    @PatchMapping("/toggle/{id}")
+    public ApiResponse<UserResponseDto> toggleUserStatus(@PathVariable("id") UUID id) {
         var result = userService.toggleStatus(id);
         return ApiResponse.<UserResponseDto>builder().result(result).message("Toggle user status successfully").build();
     }

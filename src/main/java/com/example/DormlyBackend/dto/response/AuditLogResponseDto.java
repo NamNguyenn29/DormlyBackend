@@ -16,6 +16,10 @@ public class AuditLogResponseDto {
 
     private UUID userId;
 
+    private String userEmail;
+
+    private String userFullName;
+
     private String action;
 
     private String entityType;

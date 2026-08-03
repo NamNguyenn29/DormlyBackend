@@ -33,14 +33,14 @@ public class UserDocument {
     @Column(name = "document_type", nullable = false)
     DocumentType documentType;
 
-    @Column(name = "file_url", nullable = false)
+    @Column(name = "file_url", nullable = false, columnDefinition = "NVARCHAR(MAX)")
     String fileUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     DocumentStatus status = DocumentStatus.PENDING;
 
-    @Column(name = "reject_reason")
+    @Column(name = "reject_reason", columnDefinition = "NVARCHAR(MAX)")
     String rejectReason;
 
     @Embedded

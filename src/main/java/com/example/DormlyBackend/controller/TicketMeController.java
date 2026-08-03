@@ -20,17 +20,27 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.Validator;
+import jakarta.validation.ConstraintViolation;
+import com.example.DormlyBackend.exception.model.ValidationException;
+import java.util.Set;
+
 @RestController
 @RequestMapping("/api/users/me/tickets")
 @RequiredArgsConstructor
 public class TicketMeController {
 
     private final TicketMeService ticketMeService;
+    private final ObjectMapper objectMapper;
+    private final Validator validator;
 
     @PostMapping(consumes = { "multipart/form-data" })
     public ApiResponse<TicketDetailResponseDto> create(
-            @RequestPart("data") @Valid CreateTicketRequest data,
+            @RequestPart("data") String dataJson,
             @RequestPart(value = "files", required = false) MultipartFile[] files) {
+
+        CreateTicketRequest data = parseAndValidate(dataJson, CreateTicketRequest.class);
 
         return ApiResponse.<TicketDetailResponseDto>builder()
                 .message("Ticket created")
@@ -57,13 +67,37 @@ public class TicketMeController {
     @PostMapping(value = "/{ticketId}/comments", consumes = { "multipart/form-data" })
     public ApiResponse<TicketCommentResponseDto> comment(
             @PathVariable UUID ticketId,
-            @RequestPart("data") @Valid CreateTicketCommentRequest data,
+            @RequestPart("data") String dataJson,
             @RequestPart(value = "files", required = false) MultipartFile[] files) {
+
+        CreateTicketCommentRequest data = parseAndValidate(dataJson, CreateTicketCommentRequest.class);
 
         return ApiResponse.<TicketCommentResponseDto>builder()
                 .message("Comment added")
                 .result(ticketMeService.addComment(currentUserId(), ticketId, data, files))
                 .build();
+    }
+
+    private <T> T parseAndValidate(String json, Class<T> clazz) {
+        T request;
+        try {
+            request = objectMapper.readValue(json, clazz);
+        } catch (Exception e) {
+            throw ExceptionFactory.validation(List.of(new ValidationException.FieldError(
+                    "data", "Invalid JSON format: " + e.getMessage(), json)));
+        }
+
+        Set<ConstraintViolation<T>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            List<ValidationException.FieldError> fieldErrors = violations.stream()
+                    .map(v -> new ValidationException.FieldError(
+                            v.getPropertyPath().toString(),
+                            v.getMessage(),
+                            v.getInvalidValue() == null ? null : v.getInvalidValue().toString()))
+                    .toList();
+            throw ExceptionFactory.validation(fieldErrors);
+        }
+        return request;
     }
 
     private UUID currentUserId() {

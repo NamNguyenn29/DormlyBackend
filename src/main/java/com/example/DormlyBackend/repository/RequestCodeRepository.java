@@ -13,4 +13,6 @@ public interface RequestCodeRepository extends JpaRepository<RequestCode, Long> 
             String recipientContact,
             PurposeCode purpose
     );
+
+    void deleteByRecipientContactAndPurpose(String recipientContact, PurposeCode purpose);
 }
