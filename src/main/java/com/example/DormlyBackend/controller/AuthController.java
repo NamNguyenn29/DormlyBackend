@@ -1,6 +1,7 @@
 package com.example.DormlyBackend.controller;
 
 import com.example.DormlyBackend.configuration.security.oauth2.OAuth2AuthCodeStore;
+import com.example.DormlyBackend.dto.request.FirebaseLoginRequest;
 import com.example.DormlyBackend.dto.request.ForgotPasswordRequest;
 import com.example.DormlyBackend.dto.request.LoginRequest;
 import com.example.DormlyBackend.dto.request.RegisterRequest;
@@ -100,6 +101,14 @@ public class AuthController {
                 .build();
     }
 
-
-
+    @PostMapping("/firebase")
+    public ApiResponse<AuthTokensResponse> loginWithFirebase(
+            @RequestBody @Valid FirebaseLoginRequest request,
+            HttpServletResponse response) {
+        AuthTokensResponse result = authService.loginWithFirebase(request.getToken(), response);
+        return ApiResponse.<AuthTokensResponse>builder()
+                .result(result)
+                .message("Login with Firebase successfully")
+                .build();
+    }
 }

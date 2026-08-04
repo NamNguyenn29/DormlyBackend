@@ -19,6 +19,8 @@ import com.example.DormlyBackend.entity.information.StudentProfileHistory;
 import com.example.DormlyBackend.repository.StudentProfileRepository;
 import com.example.DormlyBackend.repository.StudentProfileHistoryRepository;
 import org.springframework.web.multipart.MultipartFile;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseToken;
 import jakarta.servlet.http.Cookie;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -387,5 +389,45 @@ public class AuthService {
         clearOAuth2CodeCookie(response);
 
         return issueTokens(user, response);
+    }
+
+    public AuthTokensResponse loginWithFirebase(String idToken, HttpServletResponse response) {
+        if (idToken == null || idToken.isBlank()) {
+            throw ExceptionFactory.business(ErrorCode.INVALID_REQUEST, "Missing Firebase ID Token");
+        }
+
+        try {
+            // 1. Verify token thông qua Firebase Admin SDK
+            FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
+            String email = decodedToken.getEmail();
+            String fullName = decodedToken.getName();
+
+            // 2. Tìm hoặc tạo mới người dùng
+            User user = userRepository.findUserWithRolesByEmail(email)
+                    .orElseGet(() -> {
+                        log.info("Creating new Firebase Google user with email: {}", email);
+                        Role userRole = roleRepository.findByName("User")
+                                .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "Role", "User"));
+                        
+                        User newUser = new User();
+                        newUser.setEmail(email);
+                        newUser.setPassword(""); // Không có mật khẩu thô
+                        newUser.setFullName(fullName != null ? fullName : email);
+                        newUser.setRoles(Set.of(userRole));
+                        newUser.setActive(true); // Tự động kích hoạt vì email đã được Google/Firebase verify
+                        return userRepository.save(newUser);
+                    });
+
+            if (!user.isActive()) {
+                throw ExceptionFactory.business(ErrorCode.UNAUTHORIZED, "User is not active");
+            }
+
+            // 3. Cấp phát Token mới và trả về
+            return issueTokens(user, response);
+
+        } catch (com.google.firebase.auth.FirebaseAuthException e) {
+            log.error("Firebase token verification failed: {}", e.getMessage());
+            throw ExceptionFactory.business(ErrorCode.UNAUTHORIZED, "Invalid Firebase Token: " + e.getMessage());
+        }
     }
 }
