@@ -1,4 +1,5 @@
 package com.example.DormlyBackend.service;
+import java.util.stream.Collectors;
 
 import com.example.DormlyBackend.configuration.security.oauth2.OAuth2AuthCodeStore;
 import com.example.DormlyBackend.dto.request.ForgotPasswordRequest;
@@ -216,7 +217,11 @@ public class AuthService {
 
         setRefreshCookie(response, refreshToken, Duration.ofMillis(refreshExpirationMs));
 
-        return AuthTokensResponse.builder().accessToken(accessToken).build();
+        return AuthTokensResponse.builder()
+                .accessToken(accessToken)
+                .fullName(user.getFullName())
+                .roles(user.getRoles().stream().map(Role::getName).collect(Collectors.toSet()))
+                .build();
     }
 
     public AuthTokensResponse refresh(HttpServletRequest request, HttpServletResponse response) {
@@ -324,7 +329,6 @@ public class AuthService {
         String accessToken  = jwtService.generateToken(userDetailsService.loadUserByUsername(user.getEmail()));
         String refreshToken = jwtService.generateRefreshToken(userDetailsService.loadUserByUsername(user.getEmail()));
 
-
         user.setRefreshToken(refreshToken);
         userRepository.save(user);
 
@@ -332,6 +336,8 @@ public class AuthService {
 
         return AuthTokensResponse.builder()
                 .accessToken(accessToken)
+                .fullName(user.getFullName())
+                .roles(user.getRoles().stream().map(Role::getName).collect(Collectors.toSet()))
                 .build();
     }
 
