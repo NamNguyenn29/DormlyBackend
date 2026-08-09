@@ -71,21 +71,29 @@ public class InvoiceService {
 
     @Transactional(readOnly = true)
     public List<InvoiceResponseDto> getAllInvoices() {
-        return invoiceRepository.findAll().stream()
+        return invoiceRepository.findAllInvoices().stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
     }
 
     private InvoiceResponseDto mapToDto(Invoice invoice) {
+        if (invoice == null) return null;
         RoomAssignment ra = invoice.getRoomAssignment();
+        if (ra == null) return null;
+
+        String blockName = "Khu A";
+        if (ra.getRoomNode() != null && ra.getRoomNode().getParent() != null && ra.getRoomNode().getParent().getName() != null) {
+            blockName = ra.getRoomNode().getParent().getName();
+        }
+
         return InvoiceResponseDto.builder()
                 .id(invoice.getId())
                 .roomAssignmentId(ra.getId())
-                .roomId(ra.getRoomNode().getId())
-                .roomName(ra.getRoomNode().getName())
-                .blockName(ra.getRoomNode().getParent() != null ? ra.getRoomNode().getParent().getName() : "Khu A")
-                .studentId(ra.getUser().getId())
-                .studentName(ra.getUser().getFullName())
+                .roomId(ra.getRoomNode() != null ? ra.getRoomNode().getId() : null)
+                .roomName(ra.getRoomNode() != null ? ra.getRoomNode().getName() : "Phòng")
+                .blockName(blockName)
+                .studentId(ra.getUser() != null ? ra.getUser().getId() : null)
+                .studentName(ra.getUser() != null ? ra.getUser().getFullName() : "Sinh viên")
                 .feeCategory(invoice.getFeeCategory())
                 .amount(invoice.getAmount())
                 .status(invoice.getStatus())

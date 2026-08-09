@@ -12,9 +12,12 @@ import java.util.UUID;
 @Repository
 public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
 
-    @Query("SELECT i FROM Invoice i JOIN FETCH i.roomAssignment ra JOIN FETCH ra.user u JOIN FETCH ra.roomNode rn WHERE u.id = :userId")
+    @Query("SELECT i FROM Invoice i JOIN FETCH i.roomAssignment ra JOIN FETCH ra.user u JOIN FETCH ra.roomNode rn LEFT JOIN FETCH rn.parent rnp WHERE u.id = :userId")
     List<Invoice> findByUserId(@Param("userId") UUID userId);
 
-    @Query("SELECT i FROM Invoice i JOIN FETCH i.roomAssignment ra JOIN FETCH ra.user u JOIN FETCH ra.roomNode rn WHERE rn.id = :roomId")
+    @Query("SELECT i FROM Invoice i JOIN FETCH i.roomAssignment ra JOIN FETCH ra.user u JOIN FETCH ra.roomNode rn LEFT JOIN FETCH rn.parent rnp WHERE rn.id = :roomId")
     List<Invoice> findByRoomId(@Param("roomId") UUID roomId);
+
+    @Query("SELECT i FROM Invoice i JOIN FETCH i.roomAssignment ra JOIN FETCH ra.user u JOIN FETCH ra.roomNode rn LEFT JOIN FETCH rn.parent rnp")
+    List<Invoice> findAllInvoices();
 }
