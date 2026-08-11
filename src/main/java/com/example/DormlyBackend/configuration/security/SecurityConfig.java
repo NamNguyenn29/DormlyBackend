@@ -32,85 +32,85 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthFilter;
-    private final AuthenticationProvider authenticationProvider;
-    private final AuthenticationEntryPoint jwtAuthEntryPoint;
-    private final AccessDeniedHandler jwtAccessDeniedHandler;
-    private final CustomOAuth2UserService customOAuth2UserService;
-    private final OAuth2SuccessHandler successHandler;
-    private final OAuth2FailureHandler failureHandler;
-    private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
+        private final JwtAuthenticationFilter jwtAuthFilter;
+        private final AuthenticationProvider authenticationProvider;
+        private final AuthenticationEntryPoint jwtAuthEntryPoint;
+        private final AccessDeniedHandler jwtAccessDeniedHandler;
+        private final CustomOAuth2UserService customOAuth2UserService;
+        private final OAuth2SuccessHandler successHandler;
+        private final OAuth2FailureHandler failureHandler;
+        private final HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository;
 
+        private static final String[] PUBLIC_URLS = {
+                        "/api/v1/auth/**",
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/actuator/health",
+                        "/swagger-ui.html",
+                        "/api-docs/**",
+                        "/ws/**",
+                        "/api/request-code/**",
+                        "/login/oauth2/code/google/**"
+        };
 
-    private static final String[] PUBLIC_URLS = {
-            "/api/v1/auth/**",
-            "/v3/api-docs/**",
-            "/swagger-ui/**",
-            "/actuator/health",
-            "/swagger-ui.html",
-            "/api-docs/**",
-            "/ws/**",
-            "/api/request-code/**",
-            "/login/oauth2/code/google/**"
-    };
+        @Bean
+        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+                http
+                                // Tắt CSRF (dùng JWT stateless)
+                                .csrf(AbstractHttpConfigurer::disable)
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                // Tắt CSRF (dùng JWT stateless)
-                .csrf(AbstractHttpConfigurer::disable)
+                                // CORS
+                                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // CORS
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                                // Headers bảo mật
+                                .headers(headers -> headers
+                                                .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
+                                                .contentTypeOptions(Customizer.withDefaults())
+                                                .httpStrictTransportSecurity(hsts -> hsts
+                                                                .includeSubDomains(true)
+                                                                .maxAgeInSeconds(31536000))
+                                                .xssProtection(Customizer.withDefaults()))
 
-                // Headers bảo mật
-                .headers(headers -> headers
-                        .frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
-                        .contentTypeOptions(Customizer.withDefaults())
-                        .httpStrictTransportSecurity(hsts -> hsts
-                                .includeSubDomains(true)
-                                .maxAgeInSeconds(31536000))
-                        .xssProtection(Customizer.withDefaults()))
+                                // Phân quyền
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers(PUBLIC_URLS).permitAll()
+                                                .anyRequest().authenticated())
+                                .oauth2Login(oauth2 -> oauth2
+                                                .authorizationEndpoint(authorization -> authorization
+                                                                .authorizationRequestRepository(
+                                                                                cookieAuthorizationRequestRepository))
+                                                .userInfoEndpoint(ui -> ui.userService(customOAuth2UserService))
+                                                .successHandler(successHandler)
+                                                .failureHandler(failureHandler))
+                                // Stateless session
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // Phân quyền
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(PUBLIC_URLS).permitAll()
-                        .anyRequest().authenticated())
-                .oauth2Login(oauth2 -> oauth2
-                        .authorizationEndpoint(authorization -> authorization
-                                .authorizationRequestRepository(cookieAuthorizationRequestRepository))
-                        .userInfoEndpoint(ui -> ui.userService(customOAuth2UserService))
-                        .successHandler(successHandler)
-                        .failureHandler(failureHandler)
-                )
-                // Stateless session
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                // Xử lý lỗi
+                                .exceptionHandling(ex -> ex
+                                                .authenticationEntryPoint(jwtAuthEntryPoint)
+                                                .accessDeniedHandler(jwtAccessDeniedHandler))
 
-                // Xử lý lỗi
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(jwtAuthEntryPoint)
-                        .accessDeniedHandler(jwtAccessDeniedHandler))
+                                // Auth provider & filter
+                                .authenticationProvider(authenticationProvider)
+                                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-                // Auth provider & filter
-                .authenticationProvider(authenticationProvider)
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                return http.build();
+        }
 
-        return http.build();
-    }
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource() {
+                CorsConfiguration config = new CorsConfiguration();
+                config.setAllowedOrigins(List.of("http://127.0.0.1:5500",
+                                "http://localhost:3000", "https://26.153.167.228:5556")); // không dùng * trên
+                                                                                          // production
+                config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH"));
+                config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+                config.setAllowCredentials(true);
+                config.setMaxAge(3600L);
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://127.0.0.1:5500",
-                "http://localhost:3000")); // không dùng * trên production
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-        config.setAllowCredentials(true);
-        config.setMaxAge(3600L);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
-    }
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", config);
+                return source;
+        }
 }
