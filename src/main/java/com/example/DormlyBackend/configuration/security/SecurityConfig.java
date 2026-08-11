@@ -101,11 +101,20 @@ public class SecurityConfig {
         @Bean
         public CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration config = new CorsConfiguration();
-                config.setAllowedOrigins(List.of("http://127.0.0.1:5500",
-                                "http://localhost:3000", "https://26.153.167.228:5556")); // không dùng * trên
-                                                                                          // production
-                config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH"));
-                config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+                
+                // Cho phép tất cả các Origin (hỗ trợ cả IP LAN, localhost, Radmin VPN, mọi port và giao thức http/https)
+                // setAllowedOriginPatterns tương thích hoàn toàn với setAllowCredentials(true)
+                config.setAllowedOriginPatterns(List.of("*"));
+
+                // Cho phép tất cả các HTTP Methods phổ biến bao gồm OPTIONS (Preflight)
+                config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"));
+
+                // Cho phép tất cả các Headers mà browser/frontend gửi lên
+                config.setAllowedHeaders(List.of("*"));
+
+                // Cho phép frontend đọc các Headers phản hồi
+                config.setExposedHeaders(List.of("Authorization", "Set-Cookie"));
+
                 config.setAllowCredentials(true);
                 config.setMaxAge(3600L);
 
