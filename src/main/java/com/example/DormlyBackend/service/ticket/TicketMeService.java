@@ -115,7 +115,9 @@ public class TicketMeService {
                     .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "Building node"));
         }
         return roomAssignmentRepository.findCurrentByUserIdAt(reporterId, LocalDateTime.now())
+                .stream()
                 .map(RoomAssignment::getRoomNode)
+                .findFirst()
                 .orElse(null);
     }
 

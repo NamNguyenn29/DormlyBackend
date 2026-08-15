@@ -51,12 +51,14 @@ public class FileServeController {
 
         UserPrincipal userPrincipal = currentUserPrincipal();
 
-        // 2. Owner or admin check
+        // 2. Owner or staff/admin check
         boolean isOwner = doc.getUser().getId().equals(userPrincipal.getId());
-        boolean isAdmin = userPrincipal.getAuthorities()
-                .contains(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        boolean isStaffOrAdmin = userPrincipal.getAuthorities().stream().anyMatch(a -> {
+            String auth = a.getAuthority().toUpperCase();
+            return auth.contains("ADMIN") || auth.contains("MANAGER") || auth.contains("STAFF") || auth.contains("USERMANAGEMENT");
+        });
 
-        if (!isOwner && !isAdmin) {
+        if (!isOwner && !isStaffOrAdmin) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 

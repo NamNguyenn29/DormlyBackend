@@ -58,7 +58,7 @@ public class UserService {
                 .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "User", id));
 
         userMapper.updateUser(user, request);
-        if (request.getPassword() != null) {
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
         if (request.getRoles() != null) {
@@ -109,7 +109,11 @@ public class UserService {
 
         return roles.stream()
                 .map(name -> roleRepository.findByName(name)
-                        .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "Role", name)))
+                        .orElseGet(() -> {
+                            Role newRole = new Role();
+                            newRole.setName(name);
+                            return roleRepository.save(newRole);
+                        }))
                 .collect(java.util.stream.Collectors.toSet());
     }
 

@@ -32,6 +32,8 @@ public class RoomAssignmentMeService {
                 .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "User", userId));
 
         RoomAssignment ra = roomAssignmentRepository.findCurrentByUserIdAt(userId, at)
+                .stream()
+                .findFirst()
                 .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "RoomAssignment", null));
 
         return toCurrentDto(ra);

@@ -29,11 +29,11 @@ public class UserRequest {
     @Length(min = 10, max = 15, message = "Phone number must be between 10 and 15 characters long")
     String phoneNumber;
 
-    LocalDateTime DateOfBirth;
+    LocalDateTime dateOfBirth;
 
     Set<String> roles;
 
-    boolean isActive;
+    Boolean isActive;
 
     Gender gender;
 }

@@ -59,15 +59,42 @@ public class RoomAssignmentController {
         return ResponseEntity.ok(ApiResponse.<RoomAssignmentResponseDto>builder().result(result).build());
     }
 
+    @PostMapping("/move-out")
+    public ResponseEntity<ApiResponse<Void>> moveOut(@RequestParam UUID userId) {
+        roomAssignmentService.moveOutUser(userId);
+        return ResponseEntity.ok(ApiResponse.<Void>builder().message("Move out executed successfully").build());
+    }
+
     @PostMapping("/assign-auto")
     public ResponseEntity<ApiResponse<RoomAssignmentResponseDto>> assignAuto(
             @RequestParam UUID userId,
             @RequestParam(required = false) String assignedBy,
             @RequestParam(required = false) String contractUrl,
             @RequestParam(required = false) String notes,
-            @RequestParam(required = false) LocalDateTime startDate,
-            @RequestParam(required = false) LocalDateTime endDate) {
-        var result = roomAssignmentService.assignAuto(userId, startDate, endDate, assignedBy, contractUrl, notes);
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        
+        LocalDateTime parsedStart = parseDateTime(startDate);
+        LocalDateTime parsedEnd = parseDateTime(endDate);
+
+        var result = roomAssignmentService.assignAuto(userId, parsedStart, parsedEnd, assignedBy, contractUrl, notes);
         return ResponseEntity.ok(ApiResponse.<RoomAssignmentResponseDto>builder().result(result).build());
+    }
+
+    private LocalDateTime parseDateTime(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return LocalDateTime.parse(raw);
+        } catch (Exception e1) {
+            try {
+                return java.time.ZonedDateTime.parse(raw).toLocalDateTime();
+            } catch (Exception e2) {
+                try {
+                    return java.time.LocalDate.parse(raw).atStartOfDay();
+                } catch (Exception e3) {
+                    return null;
+                }
+            }
+        }
     }
 }

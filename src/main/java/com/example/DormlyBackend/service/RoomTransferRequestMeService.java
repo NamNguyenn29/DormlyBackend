@@ -43,6 +43,8 @@ public class RoomTransferRequestMeService {
 
         java.time.LocalDateTime at = java.time.LocalDateTime.now();
         RoomAssignment current = roomAssignmentRepository.findCurrentByUserIdAt(userId, at)
+                .stream()
+                .findFirst()
                 .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "RoomAssignment", null));
 
         // User cannot choose the target room => only store fromRoomId + reason.

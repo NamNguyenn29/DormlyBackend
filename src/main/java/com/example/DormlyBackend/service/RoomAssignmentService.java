@@ -56,6 +56,18 @@ public class RoomAssignmentService {
         BuildingNode room = buildingNodeRepository.findById(roomNodeId)
                 .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "BuildingNode", roomNodeId));
 
+        // Validate gender policy
+        Gender policy = getEffectiveGenderPolicy(room);
+        if (policy != null && policy != Gender.MIXED) {
+            Gender userGender = user.getGender();
+            if (userGender != null && userGender != policy) {
+                throw ExceptionFactory.validation(
+                        List.of(new com.example.DormlyBackend.exception.model.ValidationException.FieldError(
+                                "gender", "Không thể gán sinh viên " + (userGender == Gender.MALE ? "Nam" : "Nữ") 
+                                + " vào phòng dành cho " + (policy == Gender.MALE ? "Nam" : "Nữ"), null)));
+            }
+        }
+
         RoomAssignment entity = roomAssignmentMapper.toEntity(request);
         roomAssignmentMapper.attachRelations(entity, user, room);
 
@@ -86,7 +98,32 @@ public class RoomAssignmentService {
     public void delete(UUID id) {
         RoomAssignment entity = roomAssignmentRepository.findById(id)
                 .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "RoomAssignment", id));
+
+        if (entity.getEndDate() == null && entity.getRoomNode() != null) {
+            BuildingNode room = entity.getRoomNode();
+            long curr = room.getCurrentOccupancy() != null ? room.getCurrentOccupancy() : 0L;
+            room.setCurrentOccupancy(Math.max(0L, curr - 1L));
+            buildingNodeRepository.save(room);
+        }
+
         roomAssignmentRepository.delete(entity);
+    }
+
+    public void moveOutUser(UUID userId) {
+        List<RoomAssignment> activeList = roomAssignmentRepository.findActiveByUserId(userId);
+        if (activeList != null && !activeList.isEmpty()) {
+            LocalDateTime now = LocalDateTime.now();
+            for (RoomAssignment prev : activeList) {
+                prev.setEndDate(now);
+                roomAssignmentRepository.save(prev);
+                if (prev.getRoomNode() != null) {
+                    BuildingNode room = prev.getRoomNode();
+                    long curr = room.getCurrentOccupancy() != null ? room.getCurrentOccupancy() : 0L;
+                    room.setCurrentOccupancy(Math.max(0L, curr - 1L));
+                    buildingNodeRepository.save(room);
+                }
+            }
+        }
     }
 
     @Transactional(readOnly = true)
@@ -94,15 +131,34 @@ public class RoomAssignmentService {
         return roomAssignmentRepository.findAll().stream().map(roomAssignmentMapper::toDto).toList();
     }
 
-    // Manual assign: increment occupancy and create assignment.
+    // Manual assign: close previous assignments, update occupancy, and create assignment.
     public RoomAssignmentResponseDto assignManual(RoomAssignmentRequest request) {
         if (request == null || request.getUserId() == null || request.getRoomNodeId() == null) {
             throw ExceptionFactory.validation(
                     List.of(new com.example.DormlyBackend.exception.model.ValidationException.FieldError(
                             "userId/roomNodeId", "userId and roomNodeId are required", null)));
         }
-        // If endDate is provided we still treat as assignment; occupancy update is
-        // always done.
+
+        // Close any previous active assignments for this user & decrement old room occupancy
+        List<RoomAssignment> existingActive = roomAssignmentRepository.findActiveByUserId(request.getUserId());
+        if (existingActive != null && !existingActive.isEmpty()) {
+            LocalDateTime start = request.getStartDate() != null ? request.getStartDate() : LocalDateTime.now();
+            for (RoomAssignment prev : existingActive) {
+                if (prev.getRoomNode() != null && prev.getRoomNode().getId().equals(request.getRoomNodeId())
+                        && (prev.getEndDate() == null || prev.getEndDate().isAfter(LocalDateTime.now()))) {
+                    return roomAssignmentMapper.toDto(prev);
+                }
+                prev.setEndDate(start);
+                roomAssignmentRepository.save(prev);
+                if (prev.getRoomNode() != null && !prev.getRoomNode().getId().equals(request.getRoomNodeId())) {
+                    BuildingNode oldRoom = prev.getRoomNode();
+                    long curr = oldRoom.getCurrentOccupancy() != null ? oldRoom.getCurrentOccupancy() : 0L;
+                    oldRoom.setCurrentOccupancy(Math.max(0L, curr - 1L));
+                    buildingNodeRepository.save(oldRoom);
+                }
+            }
+        }
+
         return create(request);
     }
 
@@ -113,18 +169,28 @@ public class RoomAssignmentService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "User", userId));
 
-        Gender userGender = user.getGender();
-        LocalDateTime effectiveStart = startDate != null ? startDate : LocalDateTime.now();
-
         StudentProfile studentProfile = studentProfileRepository.findByUserId(userId).orElse(null);
 
-        // Fetch all enabled rooms (level 4, ENABLE)
-        List<BuildingNode> candidates = buildingNodeRepository.findRoomsByLevelAndStatus(4, "ENABLE");
+        Gender userGender = user.getGender();
+        if (userGender == null && studentProfile != null && studentProfile.getUser() != null) {
+            userGender = studentProfile.getUser().getGender();
+        }
+        final Gender finalUserGender = userGender;
+
+        LocalDateTime effectiveStart = startDate != null ? startDate : LocalDateTime.now();
+
+        // Fetch candidate rooms across levels/nodes
+        List<BuildingNode> candidates = buildingNodeRepository.findCandidateRooms();
+        // Ensure floor and building container nodes (parent is null or level < 3) are excluded
+        candidates = candidates.stream()
+                .filter(n -> n.getParent() != null)
+                .filter(n -> n.getNodeType() == null || n.getNodeType().getLevel() >= 3 || "ROOM".equalsIgnoreCase(n.getNodeType().getName()))
+                .toList();
 
         if (candidates.isEmpty()) {
             throw ExceptionFactory.validation(
                     List.of(new com.example.DormlyBackend.exception.model.ValidationException.FieldError(
-                            "room", "No eligible rooms available for auto assignment", null)));
+                            "room", "Không tìm thấy phòng nào hợp lệ để xếp tự động trong hệ thống", null)));
         }
 
         // Batch pre-fetch overlapping assignments for all candidate rooms to eliminate N+1 queries
@@ -155,15 +221,20 @@ public class RoomAssignmentService {
                 .filter(r -> {
                     // Check capacity dynamically over the requested time interval
                     List<RoomAssignment> active = assignmentsByRoom.getOrDefault(r.getId(), java.util.List.of());
-                    long maxCap = r.getMaxCapacity() != null ? r.getMaxCapacity() : 0L;
+                    long maxCap = r.getMaxCapacity() != null && r.getMaxCapacity() > 0 ? r.getMaxCapacity() : 4L;
                     if (!hasCapacity(active, effectiveStart, endDate, maxCap)) {
                         return false;
                     }
 
+                    if (finalUserGender == null) {
+                        Gender policy = getEffectiveGenderPolicy(r);
+                        return policy == null || policy == Gender.MIXED || active.isEmpty();
+                    }
+
                     // Check gender policy & dynamic occupant genders (preventing mixed-gender rooms)
-                    Gender policy = r.getGenderPolicy();
-                    if (policy != null) {
-                        return policy == userGender;
+                    Gender policy = getEffectiveGenderPolicy(r);
+                    if (policy != null && policy != Gender.MIXED) {
+                        return policy == finalUserGender;
                     }
                     // If no explicit policy, ensure we do not mix genders
                     if (active.isEmpty()) {
@@ -171,14 +242,26 @@ public class RoomAssignmentService {
                     }
                     return active.stream()
                             .map(ra -> ra.getUser().getGender())
-                            .allMatch(g -> g == userGender);
+                            .filter(java.util.Objects::nonNull)
+                            .allMatch(g -> g == finalUserGender);
                 })
                 .toList();
 
         if (eligibleCandidates.isEmpty()) {
+            // Fallback: relax gender policy if no strict room found, matching empty/available capacity
+            eligibleCandidates = candidates.stream()
+                    .filter(r -> {
+                        List<RoomAssignment> active = assignmentsByRoom.getOrDefault(r.getId(), java.util.List.of());
+                        long maxCap = r.getMaxCapacity() != null && r.getMaxCapacity() > 0 ? r.getMaxCapacity() : 4L;
+                        return hasCapacity(active, effectiveStart, endDate, maxCap);
+                    })
+                    .toList();
+        }
+
+        if (eligibleCandidates.isEmpty()) {
             throw ExceptionFactory.validation(
                     List.of(new com.example.DormlyBackend.exception.model.ValidationException.FieldError(
-                            "room", "No eligible rooms available due to capacity or gender compatibility policies", null)));
+                            "room", "Không còn phòng nào còn chỗ trống cho sinh viên", null)));
         }
 
         BuildingNode assignedRoom = null;
@@ -213,6 +296,15 @@ public class RoomAssignmentService {
                 assignedRoom = eligibleCandidates.stream()
                         .min(Comparator.comparingLong(r -> (long) assignmentsByRoom.getOrDefault(r.getId(), java.util.List.of()).size()))
                         .orElse(eligibleCandidates.get(0));
+            }
+        }
+
+        // Close any previous active assignments for this user
+        List<RoomAssignment> existingActive = roomAssignmentRepository.findActiveByUserId(userId);
+        if (existingActive != null && !existingActive.isEmpty()) {
+            for (RoomAssignment prev : existingActive) {
+                prev.setEndDate(effectiveStart);
+                roomAssignmentRepository.save(prev);
             }
         }
 
@@ -331,11 +423,22 @@ public class RoomAssignmentService {
     }
 
 
+    private Gender getEffectiveGenderPolicy(BuildingNode node) {
+        BuildingNode current = node;
+        while (current != null) {
+            if (current.getGenderPolicy() != null) {
+                return current.getGenderPolicy();
+            }
+            current = current.getParent();
+        }
+        return null;
+    }
+
     private void validateAndIncrementOccupancy(BuildingNode room, Long increment) {
         if (room.getMaxCapacity() == null) {
             throw ExceptionFactory.validation(
                     List.of(new com.example.DormlyBackend.exception.model.ValidationException.FieldError(
-                            "maxCapacity", "Room maxCapacity is null", null)));
+                             "maxCapacity", "Room maxCapacity is null", null)));
         }
         if (room.getCurrentOccupancy() == null) {
             room.setCurrentOccupancy(0L);
@@ -353,7 +456,6 @@ public class RoomAssignmentService {
     }
 
     private boolean genderMatches(Gender userGender, Gender roomGenderPolicy) {
-
         log.info(userGender+" "+roomGenderPolicy);
         // if room has no policy -> allow all
         if (roomGenderPolicy == null)

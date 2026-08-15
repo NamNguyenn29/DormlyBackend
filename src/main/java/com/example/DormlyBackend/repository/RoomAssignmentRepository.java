@@ -38,7 +38,7 @@ public interface RoomAssignmentRepository extends JpaRepository<RoomAssignment, 
             SELECT ra
             FROM RoomAssignment ra
             WHERE ra.user.id = :userId
-              AND ra.endDate IS NULL
+              AND (ra.endDate IS NULL OR ra.endDate > CURRENT_TIMESTAMP)
             """)
     List<RoomAssignment> findActiveByUserId(@Param("userId") UUID userId);
 
@@ -57,11 +57,10 @@ public interface RoomAssignmentRepository extends JpaRepository<RoomAssignment, 
             SELECT ra
             FROM RoomAssignment ra
             WHERE ra.user.id = :userId
-              AND ra.startDate <= :at
               AND (ra.endDate IS NULL OR ra.endDate > :at)
             ORDER BY ra.startDate DESC
             """)
-    Optional<RoomAssignment> findCurrentByUserIdAt(
+    List<RoomAssignment> findCurrentByUserIdAt(
             @Param("userId") UUID userId,
             @Param("at") LocalDateTime at);
 

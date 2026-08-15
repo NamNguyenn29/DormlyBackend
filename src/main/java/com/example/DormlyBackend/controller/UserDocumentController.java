@@ -76,6 +76,15 @@ public class UserDocumentController {
                 .build();
     }
 
+    @GetMapping("/documents/user/{userId}")
+    public ApiResponse<List<UserDocumentResponseDto>> listByUserIdAdmin(@PathVariable UUID userId) {
+        List<UserDocumentResponseDto> result = userDocumentService.listByUserId(userId);
+        return ApiResponse.<List<UserDocumentResponseDto>>builder()
+                .message("List user documents by admin successfully")
+                .result(result)
+                .build();
+    }
+
     private UUID currentUserId() {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();

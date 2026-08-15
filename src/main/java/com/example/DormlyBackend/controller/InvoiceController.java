@@ -50,8 +50,8 @@ public class InvoiceController {
                 .build();
     }
 
-    // Admin endpoint to create and list all invoices
-    @PreAuthorize("hasRole('ADMIN')")
+    // Admin & Staff endpoint to create and list all invoices
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     @PostMapping("/api/invoices")
     public ApiResponse<InvoiceResponseDto> create(@RequestBody @Valid InvoiceRequestDto request) {
         var result = invoiceService.createInvoice(request);
@@ -61,7 +61,7 @@ public class InvoiceController {
                 .build();
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
     @GetMapping("/api/invoices")
     public ApiResponse<List<InvoiceResponseDto>> listAll() {
         var result = invoiceService.getAllInvoices();

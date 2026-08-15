@@ -35,4 +35,12 @@ public interface BuildingNodeRepository extends JpaRepository<BuildingNode, UUID
     List<BuildingNode> findRoomsByLevelAndStatus(
             @Param("level") int level,
             @Param("status") String status);
+
+    @Query("""
+            SELECT DISTINCT b
+            FROM BuildingNode b
+            WHERE (b.nodeType.level = 3 OR UPPER(b.nodeType.name) = 'ROOM' OR (b.children IS EMPTY AND b.parent IS NOT NULL AND (b.maxCapacity IS NULL OR b.maxCapacity > 0)))
+              AND (b.status IS NULL OR UPPER(b.status) IN ('AVAILABLE', 'ACTIVE', 'VACANT', 'OPEN'))
+            """)
+    List<BuildingNode> findCandidateRooms();
 }

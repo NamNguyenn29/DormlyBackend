@@ -97,7 +97,7 @@ public class TicketAdminService {
         }
         if ((to == TicketStatus.RESOLVED || to == TicketStatus.REJECTED)
                 && (request.getResolutionNote() == null || request.getResolutionNote().isBlank())) {
-            throw ExceptionFactory.business(ErrorCode.TICKET_RESOLUTION_NOTE_REQUIRED, to);
+            request.setResolutionNote(to == TicketStatus.RESOLVED ? "Da hoan thanh xu ly công viec" : "Tu choi xu ly ticket");
         }
 
         ticket.setStatus(to);

@@ -7,12 +7,13 @@ import com.example.DormlyBackend.entity.authentication.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
 public interface UserMapper {
 
     @Mapping(source = "id", target = "id")
@@ -26,6 +27,7 @@ public interface UserMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "password", ignore = true)
     @Mapping(target = "roles", ignore = true)
+    @Mapping(target = "active", ignore = true)
     void updateUser(@MappingTarget User user, UserRequest request);
 
     @Mapping(target = "id", ignore = true)

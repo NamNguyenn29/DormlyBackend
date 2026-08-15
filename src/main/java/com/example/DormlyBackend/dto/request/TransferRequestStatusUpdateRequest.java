@@ -13,4 +13,6 @@ public class TransferRequestStatusUpdateRequest {
     private TransferRequestStatus status;
 
     private String reviewNote;
+
+    private java.util.UUID toRoomId;
 }

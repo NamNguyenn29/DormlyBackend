@@ -1,9 +1,11 @@
 package com.example.DormlyBackend.service;
 
+import com.example.DormlyBackend.dto.request.RoomAssignmentRequest;
 import com.example.DormlyBackend.dto.request.TransferRequestStatusUpdateRequest;
 import com.example.DormlyBackend.dto.response.TransferRequestResponseDto;
 import com.example.DormlyBackend.entity.authentication.User;
 import com.example.DormlyBackend.entity.building.TransferRequest;
+import com.example.DormlyBackend.enums.TransferRequestStatus;
 import com.example.DormlyBackend.exception.code.ErrorCode;
 import com.example.DormlyBackend.exception.factory.ExceptionFactory;
 import com.example.DormlyBackend.repository.TransferRequestRepository;
@@ -13,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,6 +25,7 @@ import java.util.UUID;
 public class TransferRequestAdminService {
 
     private final TransferRequestRepository transferRequestRepository;
+    private final RoomAssignmentService roomAssignmentService;
 
     @Transactional(readOnly = true)
     public List<TransferRequestResponseDto> listAll() {
@@ -52,7 +56,23 @@ public class TransferRequestAdminService {
         tr.setStatus(request.getStatus());
         tr.setReviewNote(request.getReviewNote());
         tr.setReviewedBy(reviewerEmail);
-        tr.setReviewedAt(java.time.LocalDateTime.now());
+        tr.setReviewedAt(LocalDateTime.now());
+
+        if (request.getStatus() == TransferRequestStatus.APPROVED && request.getToRoomId() != null && tr.getUser() != null) {
+            try {
+                RoomAssignmentRequest assignReq = RoomAssignmentRequest.builder()
+                        .userId(tr.getUser().getId())
+                        .roomNodeId(request.getToRoomId())
+                        .startDate(LocalDateTime.now())
+                        .assignedBy(reviewerEmail)
+                        .notes("Phe duyet chuyen phong theo yeu cau transfer #" + id)
+                        .build();
+                roomAssignmentService.assignManual(assignReq);
+                log.info("Successfully assigned user {} to room {} upon approving transfer {}", tr.getUser().getId(), request.getToRoomId(), id);
+            } catch (Exception e) {
+                log.error("Failed to auto-assign room upon transfer approval for request {}: {}", id, e.getMessage(), e);
+            }
+        }
 
         TransferRequest saved = transferRequestRepository.save(tr);
         return toDto(saved);
