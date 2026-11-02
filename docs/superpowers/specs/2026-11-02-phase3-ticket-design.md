@@ -2,7 +2,7 @@
 
 **Ngày:** 02/11/2026
 
-**Trạng thái:** Đã qua builder check độc lập; bàn giao người dùng xem xét, chưa phê duyệt triển khai.
+**Trạng thái:** Đã qua builder check độc lập; người dùng phê duyệt spec ngày 02/11/2026 qua yêu cầu “Ok viết plan đi”. [Implementation plan](../plans/2026-11-02-phase3-ticket.md) là đầu ra tiếp theo; chưa thực thi tính năng.
 
 **Phạm vi:** nâng cấp module ticket hiện có, gồm xác nhận kết quả, xử lý lại, xét mở lại, SLA, lịch sử và thông báo.
 
