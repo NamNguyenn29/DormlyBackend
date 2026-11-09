@@ -278,11 +278,11 @@ DTO ngoài bảng chỉ là HTTP adapter cho các interface này. Actor lấy t�
 
 **Interfaces:** Consumes actual HTTP DTO/routes của Task 10/13; produces tài liệu payload/response/error/capability, checklist UI và bộ contract tests backend. Không giả tạo file React/mobile trong repo backend.
 
-- [ ] **Step 1:** Viết contract tests assertions cho version/allowedActions/deadline Z/replayed/pendingReopen/needsReassignment, error400/403/404/409, multipart data/files, board5 keys và student array; JSON không có field nhạy cảm cho reporter. MockMvc: `jsonPath("$.result.closeReason").value("STUDENT_CONFIRMED")` sau confirm và `jsonPath("$.result.ticket").doesNotExist()`; auto-close phải trả AUTO_CLOSED riêng.
-- [ ] **Step 2:** Run `mvn -Dspring.profiles.active=test -Dtest=TicketPhase3ContractIntegrationTest test`; nếu đã xanh vì task trước triển khai đủ, ghi characterization PASS, không sửa production chỉ để làm test đỏ.
-- [ ] **Step 3:** Viết handoff có payload request thật, tên header/key lifecycle, cách reload409, retry giữ cùng key/payload/version, UI copy “Đã xử lý — chờ bạn xác nhận”, mốc48/72h và168h; phân biệt rework và reopen. Checklist Staff nhận việc/việc được giao; Admin phân công/xét; reporter confirm/rework/reopen; không để UI comment thường tự đại diện action.
-- [ ] **Step 4:** Đối chiếu tài liệu với responses từ contract tests. Ghi rõ phụ thuộc frontend repo, framework/auth client và owner triển khai còn phải xác định lúc tích hợp; chưa đánh dấu frontend xong. Contract tests phải xuất/ghi fixture JSON đã lọc credential để frontend đối chiếu, không chép response suy đoán.
-- [ ] **Step 5:** Commit: `docs: hand off phase 3 ticket API and frontend acceptance contract`.
+- [x] **Step 1:** Viết contract tests assertions cho version/allowedActions/deadline Z/replayed/pendingReopen/needsReassignment, error400/403/404/409, multipart data/files, board5 keys và student array; JSON không có field nhạy cảm cho reporter. MockMvc: `jsonPath("$.result.closeReason").value("STUDENT_CONFIRMED")` sau confirm và `jsonPath("$.result.ticket").doesNotExist()`; auto-close phải trả AUTO_CLOSED riêng.
+- [x] **Step 2:** Run `mvn -Dspring.profiles.active=test -Dtest=TicketPhase3ContractIntegrationTest test`; nếu đã xanh vì task trước triển khai đủ, ghi characterization PASS, không sửa production chỉ để làm test đỏ.
+- [x] **Step 3:** Viết handoff có payload request thật, tên header/key lifecycle, cách reload409, retry giữ cùng key/payload/version, UI copy “Đã xử lý — chờ bạn xác nhận”, mốc48/72h và168h; phân biệt rework và reopen. Checklist Staff nhận việc/việc được giao; Admin phân công/xét; reporter confirm/rework/reopen; không để UI comment thường tự đại diện action.
+- [x] **Step 4:** Đối chiếu tài liệu với responses từ contract tests. Ghi rõ phụ thuộc frontend repo, framework/auth client và owner triển khai còn phải xác định lúc tích hợp; chưa đánh dấu frontend xong. Contract tests phải xuất/ghi fixture JSON đã lọc credential để frontend đối chiếu, không chép response suy đoán.
+- [x] **Step 5:** Commit: `docs: hand off phase 3 ticket API and frontend acceptance contract`.
 
 ## Task 16: Hồi quy tích hợp và bằng chứng bàn giao
 

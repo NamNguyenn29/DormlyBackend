@@ -51,23 +51,33 @@ Error shape (validation errors add a `result` array of field errors):
 TicketCategory: MAINTENANCE | FACILITY | ROOMMATE | SECURITY | BILLING | OTHER
 TicketPriority: LOW | MEDIUM | HIGH | URGENT
 TicketStatus:   OPEN | IN_PROGRESS | RESOLVED | REJECTED | CLOSED
+TicketCloseReason: STUDENT_CONFIRMED | AUTO_CLOSED | REJECTED | ADMIN_SETTLED | DUPLICATE | CANCELLED | LEGACY_UNKNOWN
+TicketReopenStatus: PENDING | APPROVED | REJECTED
+TicketAction:   VIEW | COMMENT | CLAIM | START | RESOLVE | CONFIRM | REQUEST_REWORK | REQUEST_REOPEN | REVIEW_REOPEN | REASSIGN | CLOSE | REJECT
+TicketMetric:   FIRST_RESPONSE_TIME | RESOLUTION_TIME | REOPEN_RATE | REWORK_RATE | BREACH_RATE | AUTO_CLOSE_RATE
+TicketCycleOutcome: RESOLVED | REWORKED | CLOSED | REJECTED | LEGACY_RESOLVED
 ```
 
-**Status transition map** (enforced server-side, `TKT-002` on violation):
+**Status transition map (Phase 3 Lifecycle)**:
 
-| From | Allowed to |
-|---|---|
-| `OPEN` | `IN_PROGRESS`, `REJECTED` |
-| `IN_PROGRESS` | `RESOLVED`, `REJECTED`, `OPEN` |
-| `RESOLVED` | `CLOSED`, `IN_PROGRESS` (reopen) |
-| `REJECTED` | *(terminal — no transitions out)* |
-| `CLOSED` | *(terminal — no transitions out)* |
+| From | Action / Operation | To | Permitted Roles | Notes |
+|---|---|---|---|---|
+| `OPEN` | `claim` / assign | `OPEN` or `IN_PROGRESS` | Staff, Admin | Staff adds self; Admin assigns staff |
+| `OPEN` | `start` | `IN_PROGRESS` | Assigned Staff, Admin | Records first response timestamp |
+| `OPEN` | `reject` | `REJECTED` | Admin, Assigned Staff | Terminal (with resolution note) |
+| `IN_PROGRESS` | `resolve` | `RESOLVED` | Assigned Staff, Admin | Sets confirmation deadline (+72h) |
+| `IN_PROGRESS` | `reject` | `REJECTED` | Admin, Assigned Staff | Terminal |
+| `RESOLVED` | `confirm` | `CLOSED` | Reporter only | Sets `closeReason = STUDENT_CONFIRMED` |
+| `RESOLVED` | `autoClose` (Job) | `CLOSED` | System Scheduler | Triggered after 72h (`AUTO_CLOSED`) |
+| `RESOLVED` | `request-rework` | `IN_PROGRESS` | Reporter only | Increments `cycleNo`, preserves past cycle |
+| `CLOSED` | `reopen-request` | `CLOSED` (Pending) | Reporter only | Allowed within 7 days (168h) |
+| `CLOSED` | `review` (Approve) | `IN_PROGRESS` | Admin only | Starts new processing cycle |
+| `CLOSED` | `review` (Reject) | `CLOSED` | Admin only | Reopen request marked REJECTED |
+| `REJECTED` | *(none)* | *(terminal)* | — | No transitions allowed |
 
-Moving to `RESOLVED` or `REJECTED` **requires** `resolutionNote` in the request body (`TKT-003` otherwise).
+Moving to `RESOLVED` or `REJECTED` **requires** `note` (min 10 chars) in the request body (`TKT-010`/`TKT-003`).
 
-`RESOLVED` is not terminal (can still be reopened to `IN_PROGRESS`) but does **not** count as open work for overdue alerts or the `overdue` filter.
-
-Comments are blocked once a ticket is `CLOSED` or `REJECTED` (`TKT-008`); `OPEN`, `IN_PROGRESS`, `RESOLVED` all still accept comments.
+All state mutating commands require `Idempotency-Key` header and `expectedVersion` in request for optimistic concurrency.
 
 ---
 
@@ -576,14 +586,33 @@ Allowed for: the user who uploaded it, or any admin/staff.
 
 Everything in the summary, plus:
 
-| Field | Type |
-|---|---|
-| `description` | string |
-| `buildingNodeId` / `buildingNodeName` | UUID / string, nullable |
-| `resolutionNote` | string, nullable |
-| `resolvedAt` / `closedAt` | `LocalDateTime`, nullable |
-| `attachments` | `TicketAttachmentResponseDto[]` — ticket-level attachments only (not comment attachments) |
-| `comments` | `TicketCommentResponseDto[]` |
+| Field | Type | Description |
+|---|---|---|
+| `description` | string | Full ticket description |
+| `buildingNodeId` / `buildingNodeName` | UUID / string, nullable | Building node location |
+| `resolutionNote` | string, nullable | Note explaining resolution |
+| `resolvedAt` / `closedAt` | `LocalDateTime`, nullable | Status change timestamps |
+| `attachments` | `TicketAttachmentResponseDto[]` | Ticket-level attachments only |
+| `comments` | `TicketCommentResponseDto[]` | Comments (internal comments filtered for students) |
+| `version` | Long | Entity version for optimistic locking |
+| `allowedActions` | `TicketAction[]` | Permitted actions for current viewer |
+| `phase3EnabledAt` | Instant (UTC) | Cutover timestamp |
+| `responseStartedAt` | Instant (UTC) | When response countdown started |
+| `firstResponseAt` | Instant (UTC) | Staff first response timestamp |
+| `responseDueAt` / `baselineResponseDueAt` | Instant (UTC) | Response SLA deadlines |
+| `responseBreachedAt` / `responseOutcome` | Instant (UTC) / string | Response SLA outcome |
+| `cycleNo` | Integer | Processing cycle number (starts at 1) |
+| `resolutionDueAt` / `baselineResolutionDueAt` | Instant (UTC) | Resolution SLA deadlines |
+| `resolutionBreachedAt` | Instant (UTC) | Resolution breach timestamp |
+| `firstResolvedAt` / `latestResolvedAt` | Instant (UTC) | Resolution history timestamps |
+| `confirmationDueAt` / `confirmationRemindedAt` | Instant (UTC) | 72h / 48h confirmation deadlines |
+| `closeReason` | `TicketCloseReason` | Reason for ticket closure |
+| `reopenEligibleUntil` | Instant (UTC) | 7-day reopen window deadline |
+| `pendingReopenRequest` | Boolean | True if a reopen request is awaiting review |
+| `needsReassignment` | Boolean | True if assignees became inactive |
+| `overdueSource` | string | Source of overdue status (`SLA`, `MANUAL`) |
+| `reopenRequest` | `TicketReopenResponseDto` | Reopen request detail when applicable |
+| `replayed` | Boolean | True if request was an idempotent replay |
 
 ### `TicketCommentResponseDto`
 
@@ -631,6 +660,16 @@ Everything in the summary, plus:
 | `TKT-007` | 413 | Attachment exceeds the `{10}`MB limit | File over 10MB |
 | `TKT-008` | 400 | This ticket is settled and takes no further comments | Non-staff comment on `CLOSED`/`REJECTED` ticket |
 | `TKT-009` | 403 | You do not have access to this ticket | Attachment view/delete without permission |
+| `TKT-010` | 400 | Reason is required and must be 10-4000 characters | Reason/note missing or outside 10-4000 character limits |
+| `TKT-011` | 400 | expectedVersion is required | Missing optimistic locking version in mutation payload |
+| `TKT-012` | 400 | Idempotency-Key header is required | Missing `Idempotency-Key` header on mutation endpoint |
+| `TKT-013` | 403 | Action is forbidden for current role or assignment | Unauthorized action attempt (e.g. unassigned staff) |
+| `TKT-014` | 409 | Ticket version conflict, please reload | Version mismatch between client payload and database |
+| `TKT-015` | 409 | Ticket state or assignment has changed | Action conflict due to concurrent lifecycle transition |
+| `TKT-016` | 409 | Reopen window has expired | Reopen requested after 7-day window (`reopenEligibleUntil`) |
+| `TKT-017` | 409 | A reopen request was already submitted for this closure | Duplicate reopen request for same closure |
+| `TKT-018` | 409 | Idempotency key reused with different parameters | Reused `Idempotency-Key` with mismatched payload |
+| `TKT-019` | 409 | Attachment is locked as resolution/rework/reopen evidence | Attempted deletion of attachment tied to lifecycle evidence |
 
 Plus the usual `401` (missing/expired token) and bare Spring Security `403` (role check on `/api/tickets/**` failing before it reaches the controller — no JSON envelope on this one).
 
