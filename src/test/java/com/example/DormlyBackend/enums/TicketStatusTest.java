@@ -16,10 +16,10 @@ class TicketStatusTest {
     }
 
     @Test
-    void inProgressMovesToResolvedRejectedOrBackToOpen() {
+    void inProgressMovesToResolvedOrRejected() {
         assertTrue(TicketStatus.IN_PROGRESS.canTransitionTo(TicketStatus.RESOLVED));
         assertTrue(TicketStatus.IN_PROGRESS.canTransitionTo(TicketStatus.REJECTED));
-        assertTrue(TicketStatus.IN_PROGRESS.canTransitionTo(TicketStatus.OPEN));
+        assertFalse(TicketStatus.IN_PROGRESS.canTransitionTo(TicketStatus.OPEN));
         assertFalse(TicketStatus.IN_PROGRESS.canTransitionTo(TicketStatus.CLOSED));
     }
 

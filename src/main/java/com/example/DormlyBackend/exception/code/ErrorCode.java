@@ -35,7 +35,17 @@ public enum ErrorCode {
     TICKET_ATTACHMENT_TYPE("TKT-006", HttpStatus.BAD_REQUEST, "Unsupported attachment type: {0}"),
     TICKET_ATTACHMENT_TOO_LARGE("TKT-007", HttpStatus.PAYLOAD_TOO_LARGE, "Attachment exceeds the {0}MB limit"),
     TICKET_CLOSED_TO_COMMENTS("TKT-008", HttpStatus.BAD_REQUEST, "This ticket is settled and takes no further comments"),
-    TICKET_ACCESS_DENIED("TKT-009", HttpStatus.FORBIDDEN, "You do not have access to this ticket");
+    TICKET_ACCESS_DENIED("TKT-009", HttpStatus.FORBIDDEN, "You do not have access to this ticket"),
+    TICKET_REASON_REQUIRED("TKT-010", HttpStatus.BAD_REQUEST, "Reason is required and must be 10-4000 characters"),
+    TICKET_VERSION_REQUIRED("TKT-011", HttpStatus.BAD_REQUEST, "expectedVersion is required"),
+    TICKET_IDEMPOTENCY_KEY_REQUIRED("TKT-012", HttpStatus.BAD_REQUEST, "Idempotency-Key header is required"),
+    TICKET_ACTION_FORBIDDEN("TKT-013", HttpStatus.FORBIDDEN, "Action is forbidden for current role or assignment"),
+    TICKET_VERSION_CONFLICT("TKT-014", HttpStatus.CONFLICT, "Ticket version conflict, please reload"),
+    TICKET_ACTION_CONFLICT("TKT-015", HttpStatus.CONFLICT, "Ticket state or assignment has changed"),
+    TICKET_REOPEN_WINDOW_EXPIRED("TKT-016", HttpStatus.CONFLICT, "Reopen window has expired"),
+    TICKET_REOPEN_ALREADY_REQUESTED("TKT-017", HttpStatus.CONFLICT, "A reopen request was already submitted for this closure"),
+    TICKET_IDEMPOTENCY_CONFLICT("TKT-018", HttpStatus.CONFLICT, "Idempotency key reused with different parameters"),
+    TICKET_EVIDENCE_LOCKED("TKT-019", HttpStatus.CONFLICT, "Attachment is locked as resolution/rework/reopen evidence");
 
 
     private final String code;
