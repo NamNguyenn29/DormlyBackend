@@ -78,6 +78,14 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
             }
         }
 
+        if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+            String destination = accessor.getDestination();
+            if (destination != null && (destination.startsWith("/topic/ticket") || destination.startsWith("/topic/tickets"))) {
+                log.warn("Rejected unauthorized subscription to ticket topic: {}", destination);
+                throw new IllegalArgumentException("Arbitrary subscription to ticket topics is forbidden");
+            }
+        }
+
         return message;
     }
 }

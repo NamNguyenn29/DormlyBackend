@@ -15,5 +15,14 @@ public interface TicketOutboxEventRepository extends JpaRepository<TicketOutboxE
     List<TicketOutboxEvent> findByStatusAndNextAttemptAtLessThanEqualOrderByCreatedAtAsc(
             String status, Instant now, Pageable pageable);
 
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT o FROM TicketOutboxEvent o
+            WHERE o.status IN ('PENDING', 'RETRY_SCHEDULED')
+              AND (o.nextAttemptAt IS NULL OR o.nextAttemptAt <= :now)
+            ORDER BY o.createdAt ASC
+            """)
+    List<TicketOutboxEvent> findPendingForDispatch(
+            @org.springframework.data.repository.query.Param("now") Instant now, Pageable pageable);
+
     List<TicketOutboxEvent> findByTicketId(UUID ticketId);
 }
