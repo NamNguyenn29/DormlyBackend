@@ -58,6 +58,8 @@ public class TicketMeService {
     private final TicketHistoryService historyService;
     private final TicketPhase3Mode phase3Mode;
     private final Clock clock;
+    private final TicketReadService readService;
+    private final TicketIdentityService identityService;
 
     @Transactional
     public TicketDetailResponseDto createTicket(UUID reporterId, CreateTicketRequest request, MultipartFile[] files) {
@@ -120,25 +122,29 @@ public class TicketMeService {
 
             attachmentService.attach(saved, null, reporter, files);
             events.publishEvent(TicketEvent.created(saved.getId()));
-            return toDetail(saved, false);
+            return readService.toDetailWithContext(saved, reporterId, false);
         }
 
         Ticket saved = ticketRepository.save(ticket);
         attachmentService.attach(saved, null, reporter, files);
 
         events.publishEvent(TicketEvent.created(saved.getId()));
-        return toDetail(saved, false);
+        return readService.toDetailWithContext(saved, reporterId, false);
     }
 
     @Transactional(readOnly = true)
     public List<TicketSummaryResponseDto> listTickets(UUID reporterId, TicketStatus status) {
-        return ticketMapper.toSummaryList(ticketRepository.findByReporter(reporterId, status));
+        com.example.DormlyBackend.policy.ticket.TicketActor actor = identityService.loadActor(reporterId);
+        Instant now = clock.instant();
+        List<Ticket> tickets = ticketRepository.findByReporter(reporterId, status);
+        return tickets.stream()
+                .map(t -> readService.toSummary(t, actor, now))
+                .toList();
     }
 
     @Transactional(readOnly = true)
     public TicketDetailResponseDto getTicket(UUID reporterId, UUID ticketId) {
-        Ticket ticket = requireOwnTicket(reporterId, ticketId);
-        return toDetail(ticket, false);
+        return readService.getTicket(ticketId, reporterId);
     }
 
     @Transactional
