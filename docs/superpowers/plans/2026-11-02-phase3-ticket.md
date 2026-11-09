@@ -146,11 +146,11 @@ DTO ngoài bảng chỉ là HTTP adapter cho các interface này. Actor lấy t�
 
 **Interfaces:** Produces API SLA ở mục 3 và records `SlaPolicySnapshot(String version,TicketPriority priority,Duration response,Duration resolution)`, `SlaDeadlines(Instant responseDueAt,Instant resolutionDueAt)`. Inject `Clock.systemUTC()` khi chạy thật; test dùng fixed/mutable clock. Policy version v1 là dữ liệu snapshot, không đọc ngược config để sửa vòng cũ.
 
-- [ ] **Step 1:** Viết assertions theo `T0`: MEDIUM response=`T0+8h`, resolution=`T0+72h`; LOW=24/120h; HIGH=URGENT=1/24h. `assertFalse(isOverdue(T0,T0,T0.plusSeconds(1)))`; `assertTrue(isOverdue(T0,null,T0.plusNanos(100)))`; `assertTrue(mayRequestReopen(T0,T0.plus(168,HOURS)))`; sau thêm 100ns là false. Assert confirmation=`resolved+72h`, reminder=`resolved+48h`; UTC ↔ HCM không lệch ngày.
-- [ ] **Step 2:** Run `mvn -Dtest=TicketSlaRuleTest test`; expected FAIL vì chưa có rule.
-- [ ] **Step 3:** Implement policy/rule, không tính business hours. Định nghĩa precision 100ns cho timestamp mới phù hợp `datetime2(7)`; truncate về 100ns trước so sánh/lưu và fingerprint để JDBC round-trip không làm sai đúng hạn. Baseline và effective deadline tách field; function đánh giá breach dựa completedAt/asOf, không dựa scheduler đã chạy hay chưa. Khai báo mode `LEGACY/READ_ONLY/ACTIVE`, default LEGACY trước cutover; test pipeline mới bật ACTIVE có chủ ý, không để API mới tự kích hoạt dữ liệu.
-- [ ] **Step 4:** Chạy lại tests, thêm response terminal/legacy outcome không mở lại, priority sửa từ mốc cũ và due-date ngày địa phương kết thúc `23:59:59.9999999` → UTC. Test config đổi sang v2 không thay snapshot v1 đã lưu.
-- [ ] **Step 5:** Commit: `feat: define versioned ticket SLA and time rules`.
+- [x] **Step 1:** Viết assertions theo `T0`: MEDIUM response=`T0+8h`, resolution=`T0+72h`; LOW=24/120h; HIGH=URGENT=1/24h. `assertFalse(isOverdue(T0,T0,T0.plusSeconds(1)))`; `assertTrue(isOverdue(T0,null,T0.plusNanos(100)))`; `assertTrue(mayRequestReopen(T0,T0.plus(168,HOURS)))`; sau thêm 100ns là false. Assert confirmation=`resolved+72h`, reminder=`resolved+48h`; UTC ↔ HCM không lệch ngày.
+- [x] **Step 2:** Run `mvn -Dtest=TicketSlaRuleTest test`; expected FAIL vì chưa có rule.
+- [x] **Step 3:** Implement policy/rule, không tính business hours. Định nghĩa precision 100ns cho timestamp mới phù hợp `datetime2(7)`; truncate về 100ns trước so sánh/lưu và fingerprint để JDBC round-trip không làm sai đúng hạn. Baseline và effective deadline tách field; function đánh giá breach dựa completedAt/asOf, không dựa scheduler đã chạy hay chưa. Khai báo mode `LEGACY/READ_ONLY/ACTIVE`, default LEGACY trước cutover; test pipeline mới bật ACTIVE có chủ ý, không để API mới tự kích hoạt dữ liệu.
+- [x] **Step 4:** Chạy lại tests, thêm response terminal/legacy outcome không mở lại, priority sửa từ mốc cũ và due-date ngày địa phương kết thúc `23:59:59.9999999` → UTC. Test config đổi sang v2 không thay snapshot v1 đã lưu.
+- [x] **Step 5:** Commit: `feat: define versioned ticket SLA and time rules`.
 
 ## Task 5: Command executor, history, receipt và outbox atomic
 
