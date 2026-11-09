@@ -49,6 +49,12 @@ public class TicketAttachment {
     @JoinColumn(name = "uploaded_by", nullable = false)
     User uploadedBy;
 
+    @Column(name = "evidence_locked", nullable = false)
+    boolean evidenceLocked = false;
+
+    @Column(name = "checksum", length = 64)
+    String checksum;
+
     @Embedded
     AuditMetaData auditMetaData = new AuditMetaData();
 }
