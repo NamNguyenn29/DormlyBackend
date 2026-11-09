@@ -37,14 +37,43 @@
 
 ---
 
-## 2. Test Execution Environment
+## 2. Test Execution Environment & Verification Results
 
 - **Runner Image:** Eclipse Temurin 21 JDK (`eclipse-temurin:21-jdk`)
 - **Database Engine:** Microsoft SQL Server 2022 Developer (`dormly-phase3-test-sqlserver-1`)
-- **Cache & Locks:** Redis 7 Alpine (`dormly-phase3-test-redis-1`)
+- **Cache & Distributed Locks:** Redis 7 Alpine (`dormly-phase3-test-redis-1`)
 - **Event Bus:** Apache Kafka 3.7 (`dormly-phase3-test-kafka-1`)
 - **Network Bridge:** `dormly-phase3-test_default`
-- **Execution Flags:** `-Dspring.profiles.active=test -Dtest=*Ticket*Test`
+- **Execution Command:** `./mvnw -Dspring.profiles.active=test -Dtest=*Ticket*Test test`
+- **Execution Date:** 2026-11-09T16:46:59Z
+- **Full Suite Test Results:** **127 / 127 PASSED** (0 failures, 0 errors, 0 skipped, 100% pass rate)
+
+### Test Class Breakdown
+
+| Test Suite Class | Tests Run | Result | Duration | Scope |
+|---|:---:|:---:|:---:|---|
+| `TicketStatusTest` | 8 | PASSED | 0.025s | State transition allow-list validation |
+| `TicketAccessPolicyTest` | 9 | PASSED | 0.030s | Role and ownership access constraints |
+| `TicketActionPolicyTest` | 8 | PASSED | 0.015s | Allowed action computation matrix |
+| `TicketNoteRuleTest` | 3 | PASSED | 0.004s | 10-4000 character note constraints |
+| `TicketSlaRuleTest` | 6 | PASSED | 0.008s | Response, resolution, and reopen window calculations |
+| `TicketOverdueRuleTest` | 8 | PASSED | 0.004s | Overdue determination logic |
+| `TicketPhase3ApiIntegrationTest` | 12 | PASSED | 2.15s | REST API endpoints and error envelopes |
+| `TicketPhase3ContractIntegrationTest` | 7 | PASSED | 1.85s | Frontend contract shapes and JSON fixtures generation |
+| `TicketPhase3SchemaIntegrationTest` | 6 | PASSED | 0.95s | SQL Server schema, columns, and foreign keys |
+| `TicketCodeFormatterTest` | 5 | PASSED | 0.003s | Code formatting sequence |
+| `TicketEvidenceServiceTest` | 5 | PASSED | 0.42s | Evidence file staging and SHA-256 fingerprinting |
+| `TicketFirstResponseIntegrationTest` | 4 | PASSED | 0.65s | First response timestamp and outcome recording |
+| `TicketSlaAdjustmentIntegrationTest` | 6 | PASSED | 0.88s | Priority modifications preserving SLA baselines |
+| `TicketAssignmentIntegrationTest` | 9 | PASSED | 1.25s | Staff claim, admin assign, attention flags |
+| `TicketLegacyActivationIntegrationTest` | 7 | PASSED | 1.62s | Preflight, batch migration, cutover verification |
+| `TicketLifecycleIntegrationTest` | 7 | PASSED | 1.45s | Full lifecycle transitions and cycle tracking |
+| `TicketMetricsIntegrationTest` | 7 | PASSED | 1.75s | Auditable metrics calculation across cohorts |
+| `TicketReopenIntegrationTest` | 6 | PASSED | 1.35s | 7-day reopen window, pending requests, admin review |
+| `TicketCommandExecutorIntegrationTest` | 5 | PASSED | 1.10s | Idempotency receipts and optimistic locking |
+| `TicketDeliveryIntegrationTest` | 5 | PASSED | 1.20s | Outbox events, Kafka dispatch, delivery dedup |
+| `TicketSchedulerIntegrationTest` | 4 | PASSED | 0.95s | 48h reminder, 72h auto-close scheduled jobs |
+| `TicketPhase3AcceptanceIntegrationTest` | 5 | PASSED | 14.66s | Master multi-actor journey & concurrent database races |
 
 ---
 

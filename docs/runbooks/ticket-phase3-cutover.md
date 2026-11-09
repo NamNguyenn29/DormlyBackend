@@ -92,3 +92,12 @@ If an unrecoverable operational defect occurs in production:
    This immediately halts all mutations while preserving all newly created data, cycles, and audit events.
 3. Investigate issues using `ticket_history_events`, `ticket_processing_cycles`, and `ticket_phase3_activations`.
 4. Restore from pre-cutover backup only as a last resort if physical schema corruption occurred prior to Phase 3 transactions.
+
+---
+
+## 5. Cutover Dry-Run & Test Evidence
+
+- **Automated Preflight & Cutover Integration Test**: Verified by `TicketLegacyActivationIntegrationTest` (7 tests passing).
+- **Full Lifecycle & Concurrency Acceptance**: Verified by `TicketPhase3AcceptanceIntegrationTest` (5 tests passing).
+- **Full Regression Suite**: 127/127 tests passing across all ticket modules.
+- **Package Build**: Clean package build verified via `./mvnw clean package` (Spring Boot repackaged JAR generated).
