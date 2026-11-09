@@ -5,6 +5,9 @@ import com.example.DormlyBackend.entity.authentication.User;
 import com.example.DormlyBackend.entity.ticket.Ticket;
 import com.example.DormlyBackend.entity.ticket.TicketAttachment;
 import com.example.DormlyBackend.entity.ticket.TicketComment;
+import com.example.DormlyBackend.enums.TicketPhase3Mode;
+import com.example.DormlyBackend.exception.code.ErrorCode;
+import com.example.DormlyBackend.exception.factory.ExceptionFactory;
 import com.example.DormlyBackend.mapper.TicketAttachmentMapper;
 import com.example.DormlyBackend.mapper.TicketCommentMapper;
 import com.example.DormlyBackend.policy.ticket.TicketActor;
@@ -32,9 +35,13 @@ public class TicketCommentService {
     private final TicketSlaService slaService;
     private final TicketIdentityService identityService;
     private final Clock clock;
+    private final TicketPhase3Mode phase3Mode;
 
     @Transactional
     public TicketComment addComment(Ticket ticket, User author, String body, boolean internal, MultipartFile[] files) {
+        if (phase3Mode == TicketPhase3Mode.READ_ONLY) {
+            throw ExceptionFactory.business(ErrorCode.INVALID_REQUEST, "System is in READ_ONLY mode; mutations are forbidden");
+        }
         TicketComment comment = new TicketComment();
         comment.setTicket(ticket);
         comment.setAuthor(author);

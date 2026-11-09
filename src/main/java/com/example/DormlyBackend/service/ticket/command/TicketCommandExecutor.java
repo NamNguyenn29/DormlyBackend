@@ -3,6 +3,7 @@ package com.example.DormlyBackend.service.ticket.command;
 import com.example.DormlyBackend.entity.ticket.Ticket;
 import com.example.DormlyBackend.entity.ticket.TicketCommandReceipt;
 import com.example.DormlyBackend.entity.ticket.TicketOutboxEvent;
+import com.example.DormlyBackend.enums.TicketPhase3Mode;
 import com.example.DormlyBackend.exception.code.ErrorCode;
 import com.example.DormlyBackend.exception.factory.ExceptionFactory;
 import com.example.DormlyBackend.policy.ticket.*;
@@ -35,6 +36,7 @@ public class TicketCommandExecutor {
     private final TicketHistoryService historyService;
     private final TicketOutboxEventRepository outboxRepository;
     private final Clock clock;
+    private final TicketPhase3Mode phase3Mode;
 
     @Transactional
     public TicketCommandResult execute(UUID ticketId,
@@ -42,6 +44,9 @@ public class TicketCommandExecutor {
                                        TicketCommandContext ctx,
                                        String fingerprint,
                                        TicketMutation mutation) {
+        if (phase3Mode == TicketPhase3Mode.READ_ONLY) {
+            throw ExceptionFactory.business(ErrorCode.INVALID_REQUEST, "System is in READ_ONLY mode; mutations are forbidden");
+        }
         if (ticketId == null) {
             throw ExceptionFactory.notFound(ErrorCode.TICKET_NOT_FOUND);
         }
@@ -134,6 +139,9 @@ public class TicketCommandExecutor {
     @Transactional
     public Optional<TicketCommandResult> executeSystem(SystemTicketCommand cmd,
                                                        TicketSystemMutation mutation) {
+        if (phase3Mode == TicketPhase3Mode.READ_ONLY) {
+            return Optional.empty();
+        }
         if (cmd == null || cmd.ticketId() == null) {
             return Optional.empty();
         }

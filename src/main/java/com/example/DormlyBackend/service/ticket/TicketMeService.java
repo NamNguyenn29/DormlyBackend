@@ -63,6 +63,10 @@ public class TicketMeService {
 
     @Transactional
     public TicketDetailResponseDto createTicket(UUID reporterId, CreateTicketRequest request, MultipartFile[] files) {
+        if (phase3Mode == TicketPhase3Mode.READ_ONLY) {
+            throw ExceptionFactory.business(ErrorCode.INVALID_REQUEST, "System is in READ_ONLY mode; mutations are forbidden");
+        }
+
         User reporter = userRepository.findById(reporterId)
                 .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.USER_NOT_FOUND));
 

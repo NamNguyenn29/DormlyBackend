@@ -55,7 +55,7 @@ public class TicketReopenService {
                     ? ticket.getClosedAt().toInstant(ZoneOffset.UTC)
                     : null;
 
-            if (closedAt == null || ticket.getCloseReason() == TicketCloseReason.LEGACY_UNKNOWN) {
+            if (closedAt == null) {
                 throw ExceptionFactory.business(ErrorCode.TICKET_REOPEN_WINDOW_EXPIRED);
             }
 

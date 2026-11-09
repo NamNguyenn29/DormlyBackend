@@ -79,8 +79,7 @@ public class TicketIdentityService {
             closedAt = ticket.getClosedAt().toInstant(ZoneOffset.UTC);
         }
 
-        boolean closureTimestampTrusted = closedAt != null
-                && ticket.getCloseReason() != com.example.DormlyBackend.enums.TicketCloseReason.LEGACY_UNKNOWN;
+        boolean closureTimestampTrusted = closedAt != null;
 
         boolean closureRequestExists = false;
         if (ticket.getLastClosureEventId() != null) {

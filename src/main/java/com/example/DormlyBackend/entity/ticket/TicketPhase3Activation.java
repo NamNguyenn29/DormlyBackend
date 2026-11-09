@@ -30,7 +30,7 @@ public class TicketPhase3Activation {
     @Column(name = "status", nullable = false, length = 50)
     String status;
 
-    @Column(name = "checkpoint", length = 255)
+    @Column(name = "\"checkpoint\"", length = 255)
     String checkpoint;
 
     @Column(name = "processed_count", nullable = false)
