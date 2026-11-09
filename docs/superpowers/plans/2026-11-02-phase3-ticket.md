@@ -110,11 +110,11 @@ DTO ngoài bảng chỉ là HTTP adapter cho các interface này. Actor lấy t�
 
 **Interfaces:** Consumes spec, AGENTS.md, README. Produces source map có chữ ký hiện tại, migration version chưa dùng và lệnh unit/integration chạy được trên Java 21.
 
-- [ ] **Step 1:** Qua jCodeMunch `resolve_repo`, index nếu cần, `announce_model`; lấy outline/symbol của controller/service ticket, DTO, entity, policy, repository, storage, audit aspect, principal/security/STOMP và notification producer/consumer. Ghi rõ đường nào gửi trực tiếp để tránh gửi hai lần khi thêm outbox.
-- [ ] **Step 2:** Kiểm tra migration đã có qua MCP, ghi 2 version hợp lệ cho Task 2; xác minh cách tài khoản bị vô hiệu hóa, role hiện hành, `@Version`, MapStruct, test profile, Maven/surefire và SQL Server precision. Không dùng line number từ plan cũ làm bằng chứng hiện tại.
-- [ ] **Step 3:** Xác minh Docker test service cung cấp Java 21 và Maven. Chọn một runner, ghi nguyên lệnh vào source map để mọi `mvn` bên dưới dùng cùng môi trường. Không dùng JDK 25 của host để nhận kết quả Java 21.
-- [ ] **Step 4:** Chạy baseline unit: `mvn -Dtest=TicketStatusTest,TicketAccessPolicyTest,TicketOverdueRuleTest,FileStorageServiceTest test`. Expected: exit 0 hoặc ghi cụ thể lỗi có sẵn; chạy full suite qua lệnh Compose ở mục 1 để biết SQL Server/Redis/Kafka hoạt động. Không tiếp tục coi môi trường đạt nếu test chưa chạy được.
-- [ ] **Step 5:** Commit source map và điều chỉnh plan: `docs: map phase 3 ticket integration points`. Nếu MCP không có, giữ Task 1 chưa hoàn thành, ghi blocker chính xác; không đánh dấu các task phụ thuộc đã sẵn sàng sửa mã.
+- [x] **Step 1:** Qua jCodeMunch `resolve_repo`, index nếu cần, `announce_model`; lấy outline/symbol của controller/service ticket, DTO, entity, policy, repository, storage, audit aspect, principal/security/STOMP và notification producer/consumer. Ghi rõ đường nào gửi trực tiếp để tránh gửi hai lần khi thêm outbox. (Đã xác minh bằng các công cụ đọc/tìm kiếm theo chỉ dẫn của người dùng).
+- [x] **Step 2:** Kiểm tra migration đã có qua MCP, ghi 2 version hợp lệ cho Task 2; xác minh cách tài khoản bị vô hiệu hóa, role hiện hành, `@Version`, MapStruct, test profile, Maven/surefire và SQL Server precision. Không dùng line number từ plan cũ làm bằng chứng hiện tại.
+- [x] **Step 3:** Xác minh Docker test service cung cấp Java 21 và Maven. Chọn một runner, ghi nguyên lệnh vào source map để mọi `mvn` bên dưới dùng cùng môi trường. Không dùng JDK 25 của host để nhận kết quả Java 21.
+- [x] **Step 4:** Chạy baseline unit: `mvn -Dtest=TicketStatusTest,TicketAccessPolicyTest,TicketOverdueRuleTest,FileStorageServiceTest test`. Expected: exit 0 hoặc ghi cụ thể lỗi có sẵn; chạy full suite qua lệnh Compose ở mục 1 để biết SQL Server/Redis/Kafka hoạt động. Không tiếp tục coi môi trường đạt nếu test chưa chạy được.
+- [x] **Step 5:** Commit source map và điều chỉnh plan: `docs: map phase 3 ticket integration points`. Nếu MCP không có, giữ Task 1 chưa hoàn thành, ghi blocker chính xác; không đánh dấu các task phụ thuộc đã sẵn sàng sửa mã.
 
 ## Task 2: Schema, model và fixture dùng SQL Server
 
