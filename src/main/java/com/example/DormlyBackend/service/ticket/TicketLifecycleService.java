@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
@@ -414,5 +415,180 @@ public class TicketLifecycleService {
 
             return new TicketMutationResult(List.of(draft), null);
         });
+    }
+
+    @Transactional
+    public boolean remindConfirmation(UUID ticketId, UUID expectedCycleId, long expectedVersion, Instant now) {
+        String key = "confirm-remind:" + ticketId + ":" + expectedCycleId;
+        SystemTicketCommand cmd = new SystemTicketCommand(
+                ticketId,
+                expectedCycleId,
+                expectedVersion,
+                TicketOperation.SYSTEM_REMINDER,
+                key,
+                now
+        );
+
+        Optional<TicketCommandResult> res = executor.executeSystem(cmd, (ticket, timestamp) -> {
+            if (ticket.getStatus() != TicketStatus.RESOLVED) {
+                return new TicketMutationResult(List.of(), null);
+            }
+            if (ticket.getConfirmationRemindedAt() != null) {
+                return new TicketMutationResult(List.of(), null);
+            }
+
+            ticket.setConfirmationRemindedAt(timestamp);
+
+            TicketEventDraft draft = new TicketEventDraft(
+                    "CONFIRMATION_REMINDED",
+                    TicketEventVisibility.PUBLIC,
+                    ticket.getCurrentCycleId(),
+                    null,
+                    TicketStatus.RESOLVED,
+                    TicketStatus.RESOLVED,
+                    "Resolution confirmation reminder sent",
+                    "{\"scheduledDueAt\":\"" + ticket.getConfirmationDueAt() + "\"}"
+            );
+
+            return new TicketMutationResult(List.of(draft), null);
+        });
+
+        return res.isPresent();
+    }
+
+    @Transactional
+    public boolean autoClose(UUID ticketId, UUID expectedCycleId, long expectedVersion, Instant now) {
+        String key = "auto-close:" + ticketId + ":" + expectedCycleId;
+        SystemTicketCommand cmd = new SystemTicketCommand(
+                ticketId,
+                expectedCycleId,
+                expectedVersion,
+                TicketOperation.SYSTEM_AUTO_CLOSE,
+                key,
+                now
+        );
+
+        Optional<TicketCommandResult> res = executor.executeSystem(cmd, (ticket, timestamp) -> {
+            if (ticket.getStatus() != TicketStatus.RESOLVED) {
+                return new TicketMutationResult(List.of(), null);
+            }
+            TicketStatus fromStatus = ticket.getStatus();
+            UUID closureEventId = UUID.randomUUID();
+            Instant scheduledAt = ticket.getConfirmationDueAt();
+
+            ticket.setStatus(TicketStatus.CLOSED);
+            ticket.setClosedAt(LocalDateTime.ofInstant(timestamp, ZoneOffset.UTC));
+            ticket.setCloseReason(TicketCloseReason.AUTO_CLOSED);
+            ticket.setLastClosureEventId(closureEventId);
+
+            TicketEventDraft draft = new TicketEventDraft(
+                    "AUTO_CLOSED",
+                    TicketEventVisibility.PUBLIC,
+                    ticket.getCurrentCycleId(),
+                    null,
+                    fromStatus,
+                    TicketStatus.CLOSED,
+                    "Ticket auto-closed after confirmation window expired",
+                    "{\"closureEventId\":\"" + closureEventId + "\",\"scheduledAt\":\"" + (scheduledAt != null ? scheduledAt : timestamp) + "\"}"
+            );
+
+            return new TicketMutationResult(List.of(draft), null);
+        });
+
+        return res.isPresent();
+    }
+
+    @Transactional
+    public boolean latchResponseBreach(UUID ticketId, UUID expectedCycleId, long expectedVersion, Instant now) {
+        String key = "resp-breach:" + ticketId;
+        SystemTicketCommand cmd = new SystemTicketCommand(
+                ticketId,
+                expectedCycleId,
+                expectedVersion,
+                TicketOperation.SYSTEM_BREACH,
+                key,
+                now
+        );
+
+        Optional<TicketCommandResult> res = executor.executeSystem(cmd, (ticket, timestamp) -> {
+            if (ticket.getResponseEndedAt() != null || ticket.getResponseDueAt() == null) {
+                return new TicketMutationResult(List.of(), null);
+            }
+            if (ticket.getResponseBreachedAt() == null && TicketSlaRule.isOverdue(ticket.getResponseDueAt(), null, timestamp)) {
+                ticket.setResponseBreachedAt(timestamp);
+            }
+            return new TicketMutationResult(List.of(), null);
+        });
+
+        return res.isPresent();
+    }
+
+    @Transactional
+    public boolean latchResolutionBreach(UUID ticketId, UUID expectedCycleId, long expectedVersion, Instant now) {
+        String key = "res-breach:" + ticketId + ":" + expectedCycleId;
+        SystemTicketCommand cmd = new SystemTicketCommand(
+                ticketId,
+                expectedCycleId,
+                expectedVersion,
+                TicketOperation.SYSTEM_BREACH,
+                key,
+                now
+        );
+
+        Optional<TicketCommandResult> res = executor.executeSystem(cmd, (ticket, timestamp) -> {
+            if (ticket.getCurrentCycleId() != null) {
+                TicketProcessingCycle cycle = cycleRepository.findById(ticket.getCurrentCycleId()).orElse(null);
+                if (cycle != null && cycle.getEndedAt() == null && cycle.getResolutionDueAt() != null) {
+                    if (cycle.getResolutionBreachedAt() == null && TicketSlaRule.isOverdue(cycle.getResolutionDueAt(), null, timestamp)) {
+                        cycle.setResolutionBreachedAt(timestamp);
+                        cycleRepository.save(cycle);
+                    }
+                }
+            }
+            return new TicketMutationResult(List.of(), null);
+        });
+
+        return res.isPresent();
+    }
+
+    @Transactional
+    public boolean updateAssignmentAttention(UUID ticketId, boolean attentionOpen, long expectedVersion, Instant now) {
+        String key = "role-loss:" + ticketId + ":" + (attentionOpen ? "open" : "close") + ":" + expectedVersion;
+        SystemTicketCommand cmd = new SystemTicketCommand(
+                ticketId,
+                null,
+                expectedVersion,
+                TicketOperation.SYSTEM_ROLE_VALIDITY,
+                key,
+                now
+        );
+
+        Optional<TicketCommandResult> res = executor.executeSystem(cmd, (ticket, timestamp) -> {
+            if (ticket.isAssignmentAttentionOpen() == attentionOpen) {
+                return new TicketMutationResult(List.of(), null);
+            }
+
+            ticket.setAssignmentAttentionOpen(attentionOpen);
+            List<TicketEventDraft> drafts = new ArrayList<>();
+
+            if (attentionOpen) {
+                ticket.setAssignmentAttentionGeneration(ticket.getAssignmentAttentionGeneration() + 1);
+                TicketEventDraft draft = new TicketEventDraft(
+                        "ASSIGNMENT_ATTENTION_RAISED",
+                        TicketEventVisibility.INTERNAL,
+                        ticket.getCurrentCycleId(),
+                        null,
+                        ticket.getStatus(),
+                        ticket.getStatus(),
+                        "All active assignees lost valid role - reassignment required",
+                        "{\"generation\":" + ticket.getAssignmentAttentionGeneration() + "}"
+                );
+                drafts.add(draft);
+            }
+
+            return new TicketMutationResult(drafts, null);
+        });
+
+        return res.isPresent();
     }
 }
