@@ -254,11 +254,11 @@ DTO ngoài bảng chỉ là HTTP adapter cho các interface này. Actor lấy t�
 
 **Interfaces:** Produces metrics/records ở mục 3. Define metric enum `FIRST_RESPONSE,FIRST_RESOLUTION,LATEST_RESOLUTION,RESPONSE_SLA,RESOLUTION_SLA,TICKET_SLA,REWORK,CLOSED_REOPEN,CLOSURE,BACKLOG`; query gồm from/to/category/priority/buildingNodeId/assigneeId/cohort, `asOf` do server cấp. Aggregate và records dùng chung selector/predicate, không hai công thức độc lập.
 
-- [ ] **Step 1:** Seed test kiểm soát: durations 2h/4h→median3h; response 1 chưa đến hạn bị loại mẫu số; resolution reject trước hạn loại, reject sau hạn vẫn breach; response+resolution breach trên cùng ticket cho ticketCount=1, obligationCount=2. Hai closure cùng ticket cho closureCount=2 và distinctTicketCount=1. Không có mẫu cho rate/duration=null, count=0.
-- [ ] **Step 2:** Run `mvn -Dspring.profiles.active=test -Dtest=TicketMetricsIntegrationTest test`; expected FAIL.
-- [ ] **Step 3:** Implement đúng spec §11: ticket cohort theo createdAt, cycle cohort theo openedAt, closure theo event time; chưa đủ 72h/168h không vào tỷ lệ rework/reopen; dùng baseline không effective deadline. Chỉ snapshot asOf=now, không dựng backlog lịch sử. Dùng dataOrigin Task 2: LIVE mới vào KPI thật, DEMO bị loại; LEGACY_UNKNOWN chỉ có cycle dữ liệu đủ sau activation trong cohort legacy riêng. Không nhận dataOrigin do client gửi để qua mặt phép đo.
-- [ ] **Step 4:** Chạy lại tests: cộng records included/numerator/denominator khớp aggregate cho mọi metric; filter nhiều assignee không double-count; from inclusive/to exclusive; priority/assignee filter theo snapshot hiện tại có nhãn; import closure không tính closure mới; pagination20/max100. Không sửa KPI cố định ngoài phạm vi hoặc trả fallback số đẹp.
-- [ ] **Step 5:** Commit: `feat: calculate auditable ticket metrics from real history`.
+- [x] **Step 1:** Seed test kiểm soát: durations 2h/4h→median3h; response 1 chưa đến hạn bị loại mẫu số; resolution reject trước hạn loại, reject sau hạn vẫn breach; response+resolution breach trên cùng ticket cho ticketCount=1, obligationCount=2. Hai closure cùng ticket cho closureCount=2 và distinctTicketCount=1. Không có mẫu cho rate/duration=null, count=0.
+- [x] **Step 2:** Run `mvn -Dspring.profiles.active=test -Dtest=TicketMetricsIntegrationTest test`; expected FAIL.
+- [x] **Step 3:** Implement đúng spec §11: ticket cohort theo createdAt, cycle cohort theo openedAt, closure theo event time; chưa đủ 72h/168h không vào tỷ lệ rework/reopen; dùng baseline không effective deadline. Chỉ snapshot asOf=now, không dựng backlog lịch sử. Dùng dataOrigin Task 2: LIVE mới vào KPI thật, DEMO bị loại; LEGACY_UNKNOWN chỉ có cycle dữ liệu đủ sau activation trong cohort legacy riêng. Không nhận dataOrigin do client gửi để qua mặt phép đo.
+- [x] **Step 4:** Chạy lại tests: cộng records included/numerator/denominator khớp aggregate cho mọi metric; filter nhiều assignee không double-count; from inclusive/to exclusive; priority/assignee filter theo snapshot hiện tại có nhãn; import closure không tính closure mới; pagination20/max100. Không sửa KPI cố định ngoài phạm vi hoặc trả fallback số đẹp.
+- [x] **Step 5:** Commit: `feat: calculate auditable ticket metrics from real history`.
 
 ## Task 14: Preflight và kích hoạt dữ liệu legacy
 

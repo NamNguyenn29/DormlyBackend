@@ -347,7 +347,7 @@ public class TicketDeliveryIntegrationTest {
     @Test
     @DisplayName("Two overdue tickets for same user produce one consolidated daily digest, not two separate emails")
     void testOverdueTicketsDailyDigestSingleEmailPerRecipient() throws Exception {
-        Instant now = Instant.now();
+        Instant now = Instant.parse("2026-11-09T08:00:00Z");
 
         // Ticket 1 overdue on response SLA
         Ticket t1 = createActiveTicket("TKT-DIGEST-01", TicketStatus.OPEN);
