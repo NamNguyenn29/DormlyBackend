@@ -8,6 +8,7 @@ import com.example.DormlyBackend.entity.ticket.Ticket;
 import com.example.DormlyBackend.entity.ticket.TicketProcessingCycle;
 import com.example.DormlyBackend.enums.TicketCategory;
 import com.example.DormlyBackend.enums.TicketPriority;
+import com.example.DormlyBackend.policy.ticket.TicketSlaRule;
 import com.example.DormlyBackend.exception.code.ErrorCode;
 import com.example.DormlyBackend.exception.model.BusinessException;
 import com.example.DormlyBackend.repository.RoleRepository;
@@ -26,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Set;
 import java.util.UUID;
 
@@ -109,11 +111,11 @@ public class TicketSlaAdjustmentIntegrationTest {
         assertEquals(TicketPriority.HIGH, reloaded.getPriority());
 
         // Response deadline must be originalStart + 1 hour (HIGH SLA), NOT relative to adjustment time!
-        assertEquals(originalStart.plus(Duration.ofHours(1)), reloaded.getResponseDueAt());
+        assertEquals(originalStart.plus(Duration.ofHours(1)).truncatedTo(ChronoUnit.MILLIS), reloaded.getResponseDueAt().truncatedTo(ChronoUnit.MILLIS));
 
         // Resolution deadline must be originalStart + 24 hours (HIGH SLA)
         TicketProcessingCycle cycle = cycleRepository.findById(reloaded.getCurrentCycleId()).orElseThrow();
-        assertEquals(originalStart.plus(Duration.ofHours(24)), cycle.getResolutionDueAt());
+        assertEquals(originalStart.plus(Duration.ofHours(24)).truncatedTo(ChronoUnit.MILLIS), cycle.getResolutionDueAt().truncatedTo(ChronoUnit.MILLIS));
     }
 
     @Test

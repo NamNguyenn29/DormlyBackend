@@ -43,8 +43,7 @@ public class TicketActionPolicy {
                 boolean withinWindow = ctx.closedAt() != null
                         && ctx.closureTimestampTrusted()
                         && !ctx.closureRequestExists()
-                        && ctx.now() != null
-                        && !ctx.now().isAfter(ctx.closedAt().plus(REOPEN_WINDOW));
+                        && TicketSlaRule.mayRequestReopen(ctx.closedAt(), ctx.now());
                 if (withinWindow) {
                     actions.add(TicketAction.REQUEST_REOPEN);
                 }
@@ -112,6 +111,27 @@ public class TicketActionPolicy {
 
         Set<TicketAction> allowed = allowedActions(actor, ctx);
         if (!allowed.contains(action)) {
+            if (action == TicketAction.REQUEST_REOPEN) {
+                if (!isReporter) {
+                    throw ExceptionFactory.business(ErrorCode.TICKET_ACTION_FORBIDDEN);
+                }
+                if (ctx.status() != TicketStatus.CLOSED) {
+                    throw ExceptionFactory.business(ErrorCode.TICKET_ACTION_CONFLICT);
+                }
+                if (!ctx.closureTimestampTrusted() || ctx.closedAt() == null || !TicketSlaRule.mayRequestReopen(ctx.closedAt(), ctx.now())) {
+                    throw ExceptionFactory.business(ErrorCode.TICKET_REOPEN_WINDOW_EXPIRED);
+                }
+                if (ctx.closureRequestExists()) {
+                    throw ExceptionFactory.business(ErrorCode.TICKET_REOPEN_ALREADY_REQUESTED);
+                }
+            } else if (action == TicketAction.REVIEW_REOPEN) {
+                if (!actor.admin() || isReporter) {
+                    throw ExceptionFactory.business(ErrorCode.TICKET_ACTION_FORBIDDEN);
+                }
+                if (ctx.status() != TicketStatus.CLOSED || !ctx.pendingReopenRequest()) {
+                    throw ExceptionFactory.business(ErrorCode.TICKET_ACTION_CONFLICT);
+                }
+            }
             throw ExceptionFactory.business(ErrorCode.TICKET_ACTION_FORBIDDEN);
         }
     }

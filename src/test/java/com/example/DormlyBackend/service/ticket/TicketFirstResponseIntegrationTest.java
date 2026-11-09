@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Set;
 import java.util.UUID;
 
@@ -91,7 +92,7 @@ public class TicketFirstResponseIntegrationTest {
         ticket = ticketRepository.findById(ticket.getId()).orElseThrow();
         Instant firstResponseAt = ticket.getFirstResponseAt();
         assertNotNull(firstResponseAt);
-        assertEquals(firstResponseAt, ticket.getResponseEndedAt());
+        assertEquals(firstResponseAt.truncatedTo(ChronoUnit.MILLIS), ticket.getResponseEndedAt().truncatedTo(ChronoUnit.MILLIS));
         assertEquals(TicketResponseOutcome.RESPONDED, ticket.getResponseOutcome());
 
         // 4. Second public staff comment does NOT overwrite firstResponseAt

@@ -206,11 +206,11 @@ DTO ngoài bảng chỉ là HTTP adapter cho các interface này. Actor lấy t�
 
 **Interfaces:** Produces request/review ở mục 3; define `ReopenDecision { APPROVE, REJECT }` trong `J/enums/ReopenDecision.java`. Consumes closure anchor, executor/evidence và cycle repository; không gọi cạnh CLOSED→IN_PROGRESS bằng endpoint status.
 
-- [ ] **Step 1:** Test nộp tại closedAt+168h được, +168h+100ns bị 409; request giữ ticket CLOSED và note chuyên biệt được lưu dù comment thường bị chặn. Retry cùng key không thêm request; key khác cùng closure bị 409. Admin duyệt sau ngày 7 request nộp đúng hạn được; Staff và Admin reporter không xét được.
-- [ ] **Step 2:** Run `mvn -Dspring.profiles.active=test -Dtest=TicketReopenIntegrationTest test`; expected FAIL.
-- [ ] **Step 3:** Implement request gắn closureEventId unique. Review approve cập nhật request + assignee + new cycle + status + history/outbox atomically, clear current closedAt/closeReason, giữ closure trước. Review reject giữ CLOSED, note công khai và quyết định bất biến; không nộp lại cho cùng closure. Danh sách assignee được review cấp thay nguyên bộ nếu có, bắt buộc ít nhất một hiệu lực.
-- [ ] **Step 4:** Chạy lại tests; hai Admin xét đồng thời chỉ một quyết định; review rollback không để request APPROVED trong khi ticket còn CLOSED; đóng lần sau có closure ID và cửa sổ mới, được nộp request mới.
-- [ ] **Step 5:** Commit: `feat: add reviewed ticket reopen requests`.
+- [x] **Step 1:** Test nộp tại closedAt+168h được, +168h+100ns bị 409; request giữ ticket CLOSED và note chuyên biệt được lưu dù comment thường bị chặn. Retry cùng key không thêm request; key khác cùng closure bị 409. Admin duyệt sau ngày 7 request nộp đúng hạn được; Staff và Admin reporter không xét được.
+- [x] **Step 2:** Run `mvn -Dspring.profiles.active=test -Dtest=TicketReopenIntegrationTest test`; expected FAIL.
+- [x] **Step 3:** Implement request gắn closureEventId unique. Review approve cập nhật request + assignee + new cycle + status + history/outbox atomically, clear current closedAt/closeReason, giữ closure trước. Review reject giữ CLOSED, note công khai và quyết định bất biến; không nộp lại cho cùng closure. Danh sách assignee được review cấp thay nguyên bộ nếu có, bắt buộc ít nhất một hiệu lực.
+- [x] **Step 4:** Chạy lại tests; hai Admin xét đồng thời chỉ một quyết định; review rollback không để request APPROVED trong khi ticket còn CLOSED; đóng lần sau có closure ID và cửa sổ mới, được nộp request mới.
+- [x] **Step 5:** Commit: `feat: add reviewed ticket reopen requests`.
 
 ## Task 10: HTTP adapter, read model và bộ lọc
 

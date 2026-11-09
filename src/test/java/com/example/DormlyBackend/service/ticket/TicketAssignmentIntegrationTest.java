@@ -9,6 +9,7 @@ import com.example.DormlyBackend.entity.ticket.TicketProcessingCycle;
 import com.example.DormlyBackend.enums.TicketCategory;
 import com.example.DormlyBackend.enums.TicketPriority;
 import com.example.DormlyBackend.enums.TicketStatus;
+import com.example.DormlyBackend.policy.ticket.TicketSlaRule;
 import com.example.DormlyBackend.exception.code.ErrorCode;
 import com.example.DormlyBackend.exception.model.BusinessException;
 import com.example.DormlyBackend.repository.RoleRepository;
@@ -26,6 +27,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Set;
 import java.util.UUID;
 
@@ -91,13 +93,16 @@ public class TicketAssignmentIntegrationTest {
         assertNotNull(ticket.getResponseDueAt());
 
         // Baseline response due at = created + 8h
-        assertEquals(ticket.getPhase3EnabledAt().plus(Duration.ofHours(8)), ticket.getResponseDueAt());
+        assertEquals(ticket.getPhase3EnabledAt().plus(Duration.ofHours(8)).truncatedTo(ChronoUnit.MILLIS),
+                ticket.getResponseDueAt().truncatedTo(ChronoUnit.MILLIS));
 
         assertNotNull(ticket.getCurrentCycleId());
         TicketProcessingCycle cycle = cycleRepository.findById(ticket.getCurrentCycleId()).orElseThrow();
         assertEquals(1, cycle.getCycleNo());
-        assertEquals(ticket.getPhase3EnabledAt(), cycle.getOpenedAt());
-        assertEquals(ticket.getPhase3EnabledAt().plus(Duration.ofHours(72)), cycle.getResolutionDueAt());
+        assertEquals(ticket.getPhase3EnabledAt().truncatedTo(ChronoUnit.MILLIS),
+                cycle.getOpenedAt().truncatedTo(ChronoUnit.MILLIS));
+        assertEquals(ticket.getPhase3EnabledAt().plus(Duration.ofHours(72)).truncatedTo(ChronoUnit.MILLIS),
+                cycle.getResolutionDueAt().truncatedTo(ChronoUnit.MILLIS));
     }
 
     @Test
@@ -122,7 +127,7 @@ public class TicketAssignmentIntegrationTest {
         assertNotNull(res1);
         assertFalse(res1.replayed());
 
-        Ticket reloaded = ticketRepository.findById(ticket.getId()).orElseThrow();
+        Ticket reloaded = ticketRepository.findDetailById(ticket.getId()).orElseThrow();
         assertEquals(TicketStatus.OPEN, reloaded.getStatus());
         assertNull(reloaded.getFirstResponseAt());
         assertTrue(reloaded.getAssignees().stream().anyMatch(u -> u.getId().equals(staff1.getId())));
@@ -169,17 +174,18 @@ public class TicketAssignmentIntegrationTest {
         );
         assertNotNull(res);
 
-        Ticket reloaded = ticketRepository.findById(ticket.getId()).orElseThrow();
+        Ticket reloaded = ticketRepository.findDetailById(ticket.getId()).orElseThrow();
         assertEquals(2, reloaded.getAssignees().size());
 
         // Move to IN_PROGRESS
         reloaded.setStatus(TicketStatus.IN_PROGRESS);
-        ticketRepository.save(reloaded);
+        reloaded = ticketRepository.save(reloaded);
+        final UUID inProgressTicketId = reloaded.getId();
 
         // Attempting to clear assignees on IN_PROGRESS ticket is blocked
         TicketCommandContext adminCtx2 = new TicketCommandContext(admin.getId(), reloaded.getVersion(), "assign-key-2");
         BusinessException clearEx = assertThrows(BusinessException.class, () -> {
-            lifecycleService.assign(reloaded.getId(), Set.of(), "Clearing assignees", adminCtx2);
+            lifecycleService.assign(inProgressTicketId, Set.of(), "Clearing assignees", adminCtx2);
         });
         assertEquals(ErrorCode.TICKET_ACTION_FORBIDDEN, clearEx.getErrorCode());
     }

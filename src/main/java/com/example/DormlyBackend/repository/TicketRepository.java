@@ -27,6 +27,14 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
     Optional<Ticket> findForCommand(@Param("id") UUID id);
 
     @Query("""
+            SELECT t FROM Ticket t
+            LEFT JOIN FETCH t.reporter
+            LEFT JOIN FETCH t.assignees
+            WHERE t.id = :id
+            """)
+    Optional<Ticket> findDetailById(@Param("id") UUID id);
+
+    @Query("""
             SELECT DISTINCT t FROM Ticket t
             LEFT JOIN FETCH t.reporter
             LEFT JOIN FETCH t.assignees

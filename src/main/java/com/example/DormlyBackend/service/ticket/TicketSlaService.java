@@ -10,6 +10,7 @@ import com.example.DormlyBackend.exception.code.ErrorCode;
 import com.example.DormlyBackend.exception.factory.ExceptionFactory;
 import com.example.DormlyBackend.policy.ticket.*;
 import com.example.DormlyBackend.repository.TicketProcessingCycleRepository;
+import com.example.DormlyBackend.repository.TicketRepository;
 import com.example.DormlyBackend.service.ticket.command.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,7 @@ public class TicketSlaService {
     private final TicketCommandExecutor executor;
     private final TicketProcessingCycleRepository cycleRepository;
     private final TicketHistoryService historyService;
+    private final TicketRepository ticketRepository;
 
     @Transactional
     public TicketCommandResult updatePriority(UUID ticketId,
@@ -202,6 +204,7 @@ public class TicketSlaService {
             );
 
             historyService.append(ticket, List.of(draft), now);
+            ticketRepository.save(ticket);
         }
     }
 }

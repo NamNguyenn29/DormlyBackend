@@ -43,10 +43,9 @@ public class TicketPhase3SchemaIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
-    private User getOrCreateUser(UUID id, String email) {
-        return userRepository.findById(id).orElseGet(() -> {
+    private User getOrCreateUser(String email) {
+        return userRepository.findByEmail(email).orElseGet(() -> {
             User u = new User();
-            u.setId(id);
             u.setEmail(email);
             u.setFullName("User " + email);
             u.setPassword("test-pass");
@@ -72,7 +71,7 @@ public class TicketPhase3SchemaIntegrationTest {
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     @DisplayName("duplicateCycleNumberRejected: Rejects two cycles with the same (ticket_id, cycle_no)")
     void duplicateCycleNumberRejected() {
-        User reporter = getOrCreateUser(UUID.randomUUID(), "schema-test-1@test.com");
+        User reporter = getOrCreateUser("schema-test-1@test.com");
         Ticket ticket = createTestTicket(reporter);
 
         TicketProcessingCycle cycle1 = TicketProcessingCycle.builder()
@@ -99,7 +98,7 @@ public class TicketPhase3SchemaIntegrationTest {
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     @DisplayName("twoLiveCyclesRejected: Rejects two active cycles on the same ticket (ended_at is null)")
     void twoLiveCyclesRejected() {
-        User reporter = getOrCreateUser(UUID.randomUUID(), "schema-test-2@test.com");
+        User reporter = getOrCreateUser("schema-test-2@test.com");
         Ticket ticket = createTestTicket(reporter);
 
         TicketProcessingCycle cycle1 = TicketProcessingCycle.builder()
@@ -126,7 +125,7 @@ public class TicketPhase3SchemaIntegrationTest {
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     @DisplayName("duplicateClosureRequestRejected: Rejects multiple reopen requests for the same closure event")
     void duplicateClosureRequestRejected() {
-        User reporter = getOrCreateUser(UUID.randomUUID(), "schema-test-3@test.com");
+        User reporter = getOrCreateUser("schema-test-3@test.com");
         Ticket ticket = createTestTicket(reporter);
         UUID closureEventId = UUID.randomUUID();
 
@@ -222,7 +221,7 @@ public class TicketPhase3SchemaIntegrationTest {
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     @DisplayName("legacyImportedCycleAllowsUnknownTime: Allows opened_at=null only if legacy_imported=true")
     void legacyImportedCycleAllowsUnknownTime() {
-        User reporter = getOrCreateUser(UUID.randomUUID(), "schema-test-4@test.com");
+        User reporter = getOrCreateUser("schema-test-4@test.com");
         Ticket ticket = createTestTicket(reporter);
 
         // legacy_imported = true with opened_at = null should succeed

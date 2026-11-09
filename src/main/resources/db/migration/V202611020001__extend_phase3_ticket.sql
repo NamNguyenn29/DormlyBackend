@@ -130,7 +130,7 @@ CREATE TABLE ticket_phase3_activations (
     run_id UNIQUEIDENTIFIER NOT NULL,
     cutover_at DATETIME2(7) NOT NULL,
     status VARCHAR(50) NOT NULL,
-    checkpoint VARCHAR(255) NULL,
+    [checkpoint] VARCHAR(255) NULL,
     processed_count INT NOT NULL CONSTRAINT DF_ticket_act_processed DEFAULT 0,
     remaining_count INT NOT NULL CONSTRAINT DF_ticket_act_remaining DEFAULT 0,
     failure_count INT NOT NULL CONSTRAINT DF_ticket_act_failures DEFAULT 0,
