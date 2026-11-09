@@ -43,7 +43,7 @@ public class TicketAttachmentController {
                 .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.TICKET_NOT_FOUND));
 
         UserPrincipal principal = currentPrincipal();
-        if (!accessPolicy.canView(attachment.getTicket(), principal.getId(), isStaff(principal))) {
+        if (!accessPolicy.canViewAttachment(attachment, principal.getId(), isStaff(principal))) {
             throw ExceptionFactory.business(ErrorCode.TICKET_ACCESS_DENIED);
         }
 

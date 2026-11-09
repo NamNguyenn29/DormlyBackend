@@ -170,11 +170,11 @@ DTO ngoài bảng chỉ là HTTP adapter cho các interface này. Actor lấy t�
 
 **Interfaces:** Produces stage/attach/discard và `StagedEvidence` ở mục 3; bổ sung `cleanupStagedBefore(Instant cutoff): int`, stage TTL 24 giờ. Attach nhận đúng ticket/comment vừa tạo; không nhận arbitrary attachment ID từ client để gắn bằng chứng người khác.
 
-- [ ] **Step 1:** Test 5 tệp hợp lệ thành công, tệp thứ 6 bị chặn, 10 MB được/10 MB+1 byte bị chặn, SVG sai allowlist. Cùng filename khác bytes cho fingerprint khác; internal attachment owner biết URL vẫn 404/403 theo surface; file resolve/rework/reopen bị xóa trả 409. Rollback xóa file mới, cleanup chỉ xóa stage quá 24h chưa tham chiếu DB.
-- [ ] **Step 2:** Run `mvn -Dspring.profiles.active=test -Dtest=TicketEvidenceServiceTest,TicketAttachmentPrivacyIntegrationTest test`; expected FAIL cho rule mới, không vì DB thiếu.
-- [ ] **Step 3:** Implement staged resource gắn transaction synchronization; `afterCompletion` rollback discard, commit chuyển/giữ file bền theo storage đã có. Content hash đọc streaming trong giới hạn size; stage không tạo business event; orphan cleanup kiểm tra reference trước xóa. Download kiểm tra cả ticket và `comment.internal`, delete kiểm tra evidence lock trước xóa DB/file. Giữ đường serve/path traversal hiện có.
-- [ ] **Step 4:** Chạy lại tests; giả mất file đĩa thì trả lỗi phù hợp, không tạo URL public bỏ qua kiểm tra quyền. Retry command có file không tạo một bộ evidence mới được liên kết lần hai; stage thừa được discard.
-- [ ] **Step 5:** Commit: `feat: protect ticket evidence and internal attachments`.
+- [x] **Step 1:** Test 5 tệp hợp lệ thành công, tệp thứ 6 bị chặn, 10 MB được/10 MB+1 byte bị chặn, SVG sai allowlist. Cùng filename khác bytes cho fingerprint khác; internal attachment owner biết URL vẫn 404/403 theo surface; file resolve/rework/reopen bị xóa trả 409. Rollback xóa file mới, cleanup chỉ xóa stage quá 24h chưa tham chiếu DB.
+- [x] **Step 2:** Run `mvn -Dspring.profiles.active=test -Dtest=TicketEvidenceServiceTest,TicketAttachmentPrivacyIntegrationTest test`; expected FAIL cho rule mới, không vì DB thiếu.
+- [x] **Step 3:** Implement staged resource gắn transaction synchronization; `afterCompletion` rollback discard, commit chuyển/giữ file bền theo storage đã có. Content hash đọc streaming trong giới hạn size; stage không tạo business event; orphan cleanup kiểm tra reference trước xóa. Download kiểm tra cả ticket và `comment.internal`, delete kiểm tra evidence lock trước xóa DB/file. Giữ đường serve/path traversal hiện có.
+- [x] **Step 4:** Chạy lại tests; giả mất file đĩa thì trả lỗi phù hợp, không tạo URL public bỏ qua kiểm tra quyền. Retry command có file không tạo một bộ evidence mới được liên kết lần hai; stage thừa được discard.
+- [x] **Step 5:** Commit: `feat: protect ticket evidence and internal attachments`.
 
 ## Task 7: Tạo ticket, claim, phân công, priority và hạn
 
