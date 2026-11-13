@@ -98,7 +98,9 @@ public class AuditLogAspect {
 
     @Around("execution(* com.example.DormlyBackend.service..*.*(..))" +
             " && !@annotation(com.example.DormlyBackend.configuration.aop.Audit)" +
-            " && !within(com.example.DormlyBackend.service.AuditLogService)")
+            " && !within(com.example.DormlyBackend.service.AuditLogService)" +
+            " && !within(com.example.DormlyBackend.service.ticket.command.TicketCommandExecutor)" +
+            " && !within(com.example.DormlyBackend.service.ticket.TicketIdentityService)")
     public Object aroundAutoConvention(ProceedingJoinPoint joinPoint) throws Throwable {
         UUID currentUserId = currentUserId(joinPoint);
 

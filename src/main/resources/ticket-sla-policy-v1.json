@@ -1,0 +1,22 @@
+{
+  "version": "v1",
+  "name": "Default 24/7 SLA Policy",
+  "rules": {
+    "LOW": {
+      "responseHours": 24,
+      "resolutionHours": 120
+    },
+    "MEDIUM": {
+      "responseHours": 8,
+      "resolutionHours": 72
+    },
+    "HIGH": {
+      "responseHours": 1,
+      "resolutionHours": 24
+    },
+    "URGENT": {
+      "responseHours": 1,
+      "resolutionHours": 24
+    }
+  }
+}

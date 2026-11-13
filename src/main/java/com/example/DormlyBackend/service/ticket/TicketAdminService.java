@@ -20,25 +20,25 @@ import com.example.DormlyBackend.exception.code.ErrorCode;
 import com.example.DormlyBackend.exception.factory.ExceptionFactory;
 import com.example.DormlyBackend.mapper.TicketAttachmentMapper;
 import com.example.DormlyBackend.mapper.TicketMapper;
+import com.example.DormlyBackend.policy.ticket.TicketActor;
 import com.example.DormlyBackend.repository.TicketRepository;
+import com.example.DormlyBackend.repository.TicketSpecifications;
 import com.example.DormlyBackend.repository.UserRepository;
 import com.example.DormlyBackend.service.notification.TicketEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.time.ZoneId;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -53,6 +53,9 @@ public class TicketAdminService {
     private final TicketMapper ticketMapper;
     private final TicketAttachmentMapper attachmentMapper;
     private final ApplicationEventPublisher events;
+    private final TicketReadService readService;
+    private final TicketIdentityService identityService;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
     public Page<TicketSummaryResponseDto> listTickets(TicketStatus status,
@@ -61,113 +64,46 @@ public class TicketAdminService {
                                                       UUID reporterId,
                                                       String code,
                                                       UUID assigneeId,
-                                                      boolean overdueOnly,
-                                                      Pageable pageable) {
-        return ticketRepository
-                .search(status, priority, category, reporterId, code, assigneeId, overdueOnly, LocalDate.now(), pageable)
-                .map(ticketMapper::toSummary);
+                                                      boolean overdue,
+                                                      String slaType,
+                                                      String needsAction,
+                                                      UUID buildingNodeId,
+                                                      Instant createdFrom,
+                                                      Instant createdTo,
+                                                      Pageable pageable,
+                                                      UUID viewerId) {
+        Set<UUID> buildingNodeIds = buildingNodeId != null ? readService.getSubtreeNodeIds(buildingNodeId) : null;
+        Instant now = clock.instant();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+
+        Specification<Ticket> spec = TicketSpecifications.filter(
+                status, priority, category, reporterId, code, assigneeId,
+                overdue, slaType, needsAction, buildingNodeIds,
+                createdFrom, createdTo, now, today
+        );
+
+        Page<Ticket> page = ticketRepository.findAll(spec, pageable);
+        TicketActor actor = identityService.loadActor(viewerId);
+        return page.map(ticket -> readService.toSummary(ticket, actor, now));
     }
 
     @Transactional(readOnly = true)
-    public Map<TicketStatus, List<TicketSummaryResponseDto>> getBoard() {
+    public Map<TicketStatus, List<TicketSummaryResponseDto>> getBoard(UUID viewerId) {
+        TicketActor actor = identityService.loadActor(viewerId);
+        Instant now = clock.instant();
         Map<TicketStatus, List<TicketSummaryResponseDto>> board = new LinkedHashMap<>();
         for (TicketStatus status : TicketStatus.values()) {
-            board.put(status, new java.util.ArrayList<>());
+            board.put(status, new ArrayList<>());
         }
         for (Ticket ticket : ticketRepository.findAllForBoard()) {
-            board.get(ticket.getStatus()).add(ticketMapper.toSummary(ticket));
+            board.get(ticket.getStatus()).add(readService.toSummary(ticket, actor, now));
         }
         return board;
     }
 
     @Transactional(readOnly = true)
-    public TicketDetailResponseDto getTicket(UUID ticketId) {
-        return toDetail(require(ticketId));
-    }
-
-    @Audit(action = "UPDATE", entityType = "TICKET", entityId = "#ticketId")
-    @Transactional
-    public TicketDetailResponseDto updateStatus(UUID ticketId, TicketStatusUpdateRequest request) {
-        Ticket ticket = require(ticketId);
-        TicketStatus from = ticket.getStatus();
-        TicketStatus to = request.getStatus();
-
-        if (!from.canTransitionTo(to)) {
-            throw ExceptionFactory.business(ErrorCode.TICKET_INVALID_TRANSITION, from, to);
-        }
-        if ((to == TicketStatus.RESOLVED || to == TicketStatus.REJECTED)
-                && (request.getResolutionNote() == null || request.getResolutionNote().isBlank())) {
-            request.setResolutionNote(to == TicketStatus.RESOLVED ? "Da hoan thanh xu ly công viec" : "Tu choi xu ly ticket");
-        }
-
-        ticket.setStatus(to);
-        if (request.getResolutionNote() != null && !request.getResolutionNote().isBlank()) {
-            ticket.setResolutionNote(request.getResolutionNote());
-        }
-        if (to == TicketStatus.RESOLVED) {
-            ticket.setResolvedAt(LocalDateTime.now());
-        }
-        if (to == TicketStatus.CLOSED) {
-            ticket.setClosedAt(LocalDateTime.now());
-        }
-        if (from == TicketStatus.RESOLVED && to == TicketStatus.IN_PROGRESS) {
-            ticket.setResolvedAt(null);
-        }
-
-        Ticket saved = ticketRepository.save(ticket);
-        events.publishEvent(TicketEvent.statusChanged(saved.getId(), from, to));
-        return toDetail(saved);
-    }
-
-    @Audit(action = "UPDATE", entityType = "TICKET", entityId = "#ticketId")
-    @Transactional
-    public TicketDetailResponseDto updatePriority(UUID ticketId, TicketPriorityUpdateRequest request) {
-        Ticket ticket = require(ticketId);
-        ticket.setPriority(request.getPriority());
-        Ticket saved = ticketRepository.save(ticket);
-        events.publishEvent(TicketEvent.priorityChanged(saved.getId()));
-        return toDetail(saved);
-    }
-
-    @Audit(action = "UPDATE", entityType = "TICKET", entityId = "#ticketId")
-    @Transactional
-    public TicketDetailResponseDto updateDueDate(UUID ticketId, TicketDueDateUpdateRequest request) {
-        Ticket ticket = require(ticketId);
-        ticket.setDueDate(request.getDueDate());
-        // Re-arm overdue alerting: an extended deadline must not stay muted.
-        ticket.setOverdueAlertedAt(null);
-        Ticket saved = ticketRepository.save(ticket);
-        events.publishEvent(TicketEvent.dueDateChanged(saved.getId()));
-        return toDetail(saved);
-    }
-
-    @Audit(action = "UPDATE", entityType = "TICKET", entityId = "#ticketId")
-    @Transactional
-    public TicketDetailResponseDto updateAssignees(UUID ticketId, TicketAssigneesUpdateRequest request) {
-        Ticket ticket = require(ticketId);
-
-        Set<UUID> previous = new LinkedHashSet<>();
-        ticket.getAssignees().forEach(u -> previous.add(u.getId()));
-
-        Set<User> replacement = new LinkedHashSet<>();
-        for (UUID userId : request.getUserIds()) {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.USER_NOT_FOUND));
-            if (!isAssignable(user)) {
-                throw ExceptionFactory.business(ErrorCode.TICKET_ASSIGNEE_NOT_STAFF, user.getEmail());
-            }
-            replacement.add(user);
-        }
-
-        ticket.getAssignees().clear();
-        ticket.getAssignees().addAll(replacement);
-        Ticket saved = ticketRepository.save(ticket);
-
-        Set<UUID> added = new LinkedHashSet<>();
-        replacement.stream().map(User::getId).filter(id -> !previous.contains(id)).forEach(added::add);
-
-        events.publishEvent(TicketEvent.assigneesChanged(saved.getId(), added));
-        return toDetail(saved);
+    public TicketDetailResponseDto getTicket(UUID ticketId, UUID viewerId) {
+        return readService.getTicket(ticketId, viewerId);
     }
 
     @Transactional
@@ -188,22 +124,8 @@ public class TicketAdminService {
                 .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.TICKET_NOT_FOUND));
     }
 
-    private boolean isAssignable(User user) {
-        return user.getRoles().stream()
-                .map(Role::getName)
-                .filter(java.util.Objects::nonNull)
-                .anyMatch(name -> ASSIGNABLE_ROLES.contains(name.toUpperCase()));
-    }
-
     private Ticket require(UUID ticketId) {
         return ticketRepository.findById(ticketId)
                 .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.TICKET_NOT_FOUND));
-    }
-
-    private TicketDetailResponseDto toDetail(Ticket ticket) {
-        return ticketMapper.toDetail(
-                ticket,
-                attachmentMapper.toDtoList(attachmentService.findTicketLevelByTicket(ticket.getId())),
-                commentService.listComments(ticket.getId(), true));
     }
 }

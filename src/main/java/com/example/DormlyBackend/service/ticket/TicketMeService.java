@@ -10,18 +10,23 @@ import com.example.DormlyBackend.entity.building.BuildingNode;
 import com.example.DormlyBackend.entity.building.RoomAssignment;
 import com.example.DormlyBackend.entity.ticket.Ticket;
 import com.example.DormlyBackend.entity.ticket.TicketComment;
+import com.example.DormlyBackend.entity.ticket.TicketProcessingCycle;
+import com.example.DormlyBackend.enums.TicketDataOrigin;
+import com.example.DormlyBackend.enums.TicketEventVisibility;
+import com.example.DormlyBackend.enums.TicketPhase3Mode;
 import com.example.DormlyBackend.enums.TicketPriority;
 import com.example.DormlyBackend.enums.TicketStatus;
 import com.example.DormlyBackend.exception.code.ErrorCode;
 import com.example.DormlyBackend.exception.factory.ExceptionFactory;
 import com.example.DormlyBackend.mapper.TicketAttachmentMapper;
 import com.example.DormlyBackend.mapper.TicketMapper;
-import com.example.DormlyBackend.repository.BuildingNodeRepository;
-import com.example.DormlyBackend.repository.RoomAssignmentRepository;
-import com.example.DormlyBackend.repository.TicketCodeSequence;
-import com.example.DormlyBackend.repository.TicketRepository;
-import com.example.DormlyBackend.repository.UserRepository;
+import com.example.DormlyBackend.policy.ticket.SlaDeadlines;
+import com.example.DormlyBackend.policy.ticket.SlaPolicySnapshot;
+import com.example.DormlyBackend.policy.ticket.TicketSlaPolicy;
+import com.example.DormlyBackend.policy.ticket.TicketSlaRule;
+import com.example.DormlyBackend.repository.*;
 import com.example.DormlyBackend.service.notification.TicketEvent;
+import com.example.DormlyBackend.service.ticket.command.TicketEventDraft;
 import com.example.DormlyBackend.util.TicketCodeFormatter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -29,6 +34,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -47,9 +54,19 @@ public class TicketMeService {
     private final TicketMapper ticketMapper;
     private final TicketAttachmentMapper attachmentMapper;
     private final ApplicationEventPublisher events;
+    private final TicketProcessingCycleRepository cycleRepository;
+    private final TicketHistoryService historyService;
+    private final TicketPhase3Mode phase3Mode;
+    private final Clock clock;
+    private final TicketReadService readService;
+    private final TicketIdentityService identityService;
 
     @Transactional
     public TicketDetailResponseDto createTicket(UUID reporterId, CreateTicketRequest request, MultipartFile[] files) {
+        if (phase3Mode == TicketPhase3Mode.READ_ONLY) {
+            throw ExceptionFactory.business(ErrorCode.INVALID_REQUEST, "System is in READ_ONLY mode; mutations are forbidden");
+        }
+
         User reporter = userRepository.findById(reporterId)
                 .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.USER_NOT_FOUND));
 
@@ -63,22 +80,75 @@ public class TicketMeService {
         ticket.setPriority(TicketPriority.MEDIUM);
         ticket.setBuildingNode(resolveBuildingNode(reporterId, request.getBuildingNodeId()));
 
+        if (phase3Mode == TicketPhase3Mode.ACTIVE) {
+            Instant now = clock.instant();
+            ticket.setPhase3EnabledAt(now);
+            ticket.setDataOrigin(TicketDataOrigin.LIVE);
+
+            SlaPolicySnapshot snapshot = TicketSlaPolicy.snapshot(TicketPriority.MEDIUM);
+            SlaDeadlines deadlines = TicketSlaRule.deadlines(now, snapshot);
+
+            ticket.setResponseStartedAt(now);
+            ticket.setBaselineResponseDueAt(deadlines.responseDueAt());
+            ticket.setResponseDueAt(deadlines.responseDueAt());
+            ticket.setResponsePolicySnapshot(snapshot.version());
+
+            Ticket saved = ticketRepository.save(ticket);
+
+            TicketProcessingCycle cycle = TicketProcessingCycle.builder()
+                    .ticket(saved)
+                    .cycleNo(1)
+                    .openedAt(now)
+                    .openedBy(reporter)
+                    .openReason("Ticket created")
+                    .prioritySnapshot(TicketPriority.MEDIUM)
+                    .policySnapshot(snapshot.version())
+                    .baselineResolutionDueAt(deadlines.resolutionDueAt())
+                    .resolutionDueAt(deadlines.resolutionDueAt())
+                    .createdAt(now)
+                    .build();
+            cycle = cycleRepository.save(cycle);
+
+            saved.setCurrentCycleId(cycle.getId());
+            saved = ticketRepository.save(saved);
+
+            TicketEventDraft draft = new TicketEventDraft(
+                    "CREATED",
+                    TicketEventVisibility.PUBLIC,
+                    cycle.getId(),
+                    reporter.getId(),
+                    null,
+                    TicketStatus.OPEN,
+                    "Ticket created",
+                    "{}"
+            );
+            historyService.append(saved, List.of(draft), now);
+
+            attachmentService.attach(saved, null, reporter, files);
+            events.publishEvent(TicketEvent.created(saved.getId()));
+            return readService.toDetailWithContext(saved, reporterId, false);
+        }
+
         Ticket saved = ticketRepository.save(ticket);
         attachmentService.attach(saved, null, reporter, files);
 
         events.publishEvent(TicketEvent.created(saved.getId()));
-        return toDetail(saved, false);
+        return readService.toDetailWithContext(saved, reporterId, false);
     }
 
     @Transactional(readOnly = true)
     public List<TicketSummaryResponseDto> listTickets(UUID reporterId, TicketStatus status) {
-        return ticketMapper.toSummaryList(ticketRepository.findByReporter(reporterId, status));
+        com.example.DormlyBackend.policy.ticket.TicketActor actor = identityService.loadActor(reporterId);
+        Instant now = clock.instant();
+        List<Ticket> tickets = ticketRepository.findByReporter(reporterId, status);
+        return tickets.stream()
+                .map(t -> readService.toSummary(t, actor, now))
+                .toList();
     }
 
     @Transactional(readOnly = true)
     public TicketDetailResponseDto getTicket(UUID reporterId, UUID ticketId) {
-        Ticket ticket = requireOwnTicket(reporterId, ticketId);
-        return toDetail(ticket, false);
+        return readService.getTicket(ticketId, reporterId);
     }
 
     @Transactional

@@ -5,14 +5,20 @@ import com.example.DormlyBackend.entity.authentication.User;
 import com.example.DormlyBackend.entity.ticket.Ticket;
 import com.example.DormlyBackend.entity.ticket.TicketAttachment;
 import com.example.DormlyBackend.entity.ticket.TicketComment;
+import com.example.DormlyBackend.enums.TicketPhase3Mode;
+import com.example.DormlyBackend.exception.code.ErrorCode;
+import com.example.DormlyBackend.exception.factory.ExceptionFactory;
 import com.example.DormlyBackend.mapper.TicketAttachmentMapper;
 import com.example.DormlyBackend.mapper.TicketCommentMapper;
+import com.example.DormlyBackend.policy.ticket.TicketActor;
 import com.example.DormlyBackend.repository.TicketCommentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -26,9 +32,16 @@ public class TicketCommentService {
     private final TicketAttachmentService attachmentService;
     private final TicketCommentMapper commentMapper;
     private final TicketAttachmentMapper attachmentMapper;
+    private final TicketSlaService slaService;
+    private final TicketIdentityService identityService;
+    private final Clock clock;
+    private final TicketPhase3Mode phase3Mode;
 
     @Transactional
     public TicketComment addComment(Ticket ticket, User author, String body, boolean internal, MultipartFile[] files) {
+        if (phase3Mode == TicketPhase3Mode.READ_ONLY) {
+            throw ExceptionFactory.business(ErrorCode.INVALID_REQUEST, "System is in READ_ONLY mode; mutations are forbidden");
+        }
         TicketComment comment = new TicketComment();
         comment.setTicket(ticket);
         comment.setAuthor(author);
@@ -37,6 +50,13 @@ public class TicketCommentService {
 
         TicketComment saved = commentRepository.save(comment);
         attachmentService.attach(ticket, saved, author, files);
+
+        if (author != null && author.getId() != null) {
+            TicketActor actor = identityService.loadActor(author.getId());
+            Instant now = clock.instant();
+            slaService.recordFirstResponse(ticket, actor, saved, now);
+        }
+
         return saved;
     }
 

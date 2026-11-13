@@ -38,6 +38,11 @@ public class TicketNotificationPublisher {
             return;
         }
 
+        if (ticket.getPhase3EnabledAt() != null) {
+            log.info("[TICKET-NOTIFY] Skipping legacy notification for phase 3 ticket {}", ticket.getId());
+            return;
+        }
+
         switch (event.getType()) {
             case CREATED -> notify(admins(), ticket, "New ticket: " + ticket.getTitle(),
                     "A new " + ticket.getCategory() + " ticket has been filed.",

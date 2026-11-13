@@ -13,7 +13,7 @@ public enum TicketStatus {
 
     private static final Map<TicketStatus, Set<TicketStatus>> ALLOWED = Map.of(
             OPEN, EnumSet.of(IN_PROGRESS, REJECTED),
-            IN_PROGRESS, EnumSet.of(RESOLVED, REJECTED, OPEN),
+            IN_PROGRESS, EnumSet.of(RESOLVED, REJECTED),
             RESOLVED, EnumSet.of(CLOSED, IN_PROGRESS),
             REJECTED, EnumSet.noneOf(TicketStatus.class),
             CLOSED, EnumSet.noneOf(TicketStatus.class));

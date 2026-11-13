@@ -133,3 +133,13 @@ Docker uses the `docker` Spring profile for the backend and the `test` Spring pr
 - `application-test.properties` uses the Compose test database.
 
 Flyway migrations run on startup from `src/main/resources/db/migration`.
+
+## Ticket Phase 3 Support System
+
+The Ticket support module incorporates enterprise SLA management, multi-cycle audit tracking, optimistic concurrency, and automated cutover migrations.
+
+- **Frontend Handoff & Wire Protocol**: [`docs/api/ticket-phase3-frontend-handoff.md`](file:///home/cang/orca/DormlyBackend/docs/api/ticket-phase3-frontend-handoff.md)
+- **API Reference**: [`docs/api/ticket-system.md`](file:///home/cang/orca/DormlyBackend/docs/api/ticket-system.md)
+- **Cutover Operations Runbook**: [`docs/runbooks/ticket-phase3-cutover.md`](file:///home/cang/orca/DormlyBackend/docs/runbooks/ticket-phase3-cutover.md)
+- **Acceptance Matrix & QA Evidence**: [`docs/qa/ticket-phase3-acceptance.md`](file:///home/cang/orca/DormlyBackend/docs/qa/ticket-phase3-acceptance.md)
+- **Phase 3 Activation Modes**: Controlled by `TICKET_PHASE3_MODE` (`LEGACY`, `READ_ONLY`, `ACTIVE`).

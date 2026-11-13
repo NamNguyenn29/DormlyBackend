@@ -102,6 +102,9 @@ public class TicketAttachmentService {
     }
 
     public void removeAttachment(TicketAttachment attachment) {
+        if (attachment.isEvidenceLocked()) {
+            throw ExceptionFactory.business(ErrorCode.TICKET_EVIDENCE_LOCKED);
+        }
         attachmentRepository.delete(attachment);
         fileStorage.delete(SUBDIR, attachment.getStoredName());
     }

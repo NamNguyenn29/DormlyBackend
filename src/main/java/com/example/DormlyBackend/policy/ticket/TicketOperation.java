@@ -1,0 +1,22 @@
+package com.example.DormlyBackend.policy.ticket;
+
+public enum TicketOperation {
+    CREATE,
+    CLAIM,
+    START,
+    RESOLVE,
+    REJECT,
+    CONFIRM,
+    REQUEST_REWORK,
+    WITHDRAW_RESOLUTION,
+    ADMIN_CLOSE,
+    ASSIGN,
+    UPDATE_PRIORITY,
+    ADJUST_DEADLINES,
+    REQUEST_REOPEN,
+    REVIEW_REOPEN,
+    SYSTEM_REMINDER,
+    SYSTEM_AUTO_CLOSE,
+    SYSTEM_BREACH,
+    SYSTEM_ROLE_VALIDITY
+}

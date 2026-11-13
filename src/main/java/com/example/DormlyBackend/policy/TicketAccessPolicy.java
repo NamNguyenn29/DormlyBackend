@@ -2,6 +2,7 @@ package com.example.DormlyBackend.policy;
 
 import com.example.DormlyBackend.entity.authentication.User;
 import com.example.DormlyBackend.entity.ticket.Ticket;
+import com.example.DormlyBackend.entity.ticket.TicketAttachment;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -33,6 +34,19 @@ public class TicketAccessPolicy {
 
     public boolean canSeeInternalComments(boolean isStaff) {
         return isStaff;
+    }
+
+    public boolean canViewAttachment(TicketAttachment attachment, UUID userId, boolean isStaff) {
+        if (attachment == null || attachment.getTicket() == null) {
+            return false;
+        }
+        if (!canView(attachment.getTicket(), userId, isStaff)) {
+            return false;
+        }
+        if (attachment.getComment() != null && attachment.getComment().isInternal()) {
+            return canSeeInternalComments(isStaff);
+        }
+        return true;
     }
 
     public boolean canDeleteAttachment(UUID uploaderId, UUID userId, boolean isStaff) {
