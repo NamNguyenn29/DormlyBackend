@@ -45,7 +45,9 @@ public enum ErrorCode {
     TICKET_REOPEN_WINDOW_EXPIRED("TKT-016", HttpStatus.CONFLICT, "Reopen window has expired"),
     TICKET_REOPEN_ALREADY_REQUESTED("TKT-017", HttpStatus.CONFLICT, "A reopen request was already submitted for this closure"),
     TICKET_IDEMPOTENCY_CONFLICT("TKT-018", HttpStatus.CONFLICT, "Idempotency key reused with different parameters"),
-    TICKET_EVIDENCE_LOCKED("TKT-019", HttpStatus.CONFLICT, "Attachment is locked as resolution/rework/reopen evidence");
+    TICKET_EVIDENCE_LOCKED("TKT-019", HttpStatus.CONFLICT, "Attachment is locked as resolution/rework/reopen evidence"),
+
+    INVOICE_ALREADY_PAID("INV-001", HttpStatus.CONFLICT, "Invoice {0} has already been paid");
 
 
     private final String code;

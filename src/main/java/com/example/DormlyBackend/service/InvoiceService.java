@@ -1,6 +1,8 @@
 package com.example.DormlyBackend.service;
 
+import com.example.DormlyBackend.dto.request.InvoicePaymentConfirmationRequest;
 import com.example.DormlyBackend.dto.request.InvoiceRequestDto;
+import com.example.DormlyBackend.entity.authentication.User;
 import com.example.DormlyBackend.dto.response.InvoiceResponseDto;
 import com.example.DormlyBackend.entity.building.Invoice;
 import com.example.DormlyBackend.entity.building.RoomAssignment;
@@ -10,10 +12,12 @@ import com.example.DormlyBackend.exception.factory.ExceptionFactory;
 import com.example.DormlyBackend.policy.InvoiceAccessPolicy;
 import com.example.DormlyBackend.repository.InvoiceRepository;
 import com.example.DormlyBackend.repository.RoomAssignmentRepository;
+import com.example.DormlyBackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -27,6 +31,8 @@ public class InvoiceService {
     private final InvoiceRepository invoiceRepository;
     private final RoomAssignmentRepository roomAssignmentRepository;
     private final InvoiceAccessPolicy invoiceAccessPolicy;
+    private final UserRepository userRepository;
+    private final Clock clock;
 
     public InvoiceResponseDto createInvoice(InvoiceRequestDto request) {
         RoomAssignment assignment = roomAssignmentRepository.findById(request.getRoomAssignmentId())
@@ -47,14 +53,45 @@ public class InvoiceService {
         return mapToDto(saved);
     }
 
-    public InvoiceResponseDto payInvoice(UUID invoiceId) {
-        Invoice invoice = invoiceRepository.findById(invoiceId)
+    /**
+     * Records that an invoice was paid, on the word of a staff member and with their evidence.
+     *
+     * <p>Payment is a fact staff establish (bank statement match or cash receipt), never something
+     * a client asserts, so the confirming user, method, reference and server time are all stored.
+     * The invoice row is locked while it is checked and updated: only one confirmation can succeed
+     * and the first one's evidence is never overwritten.
+     *
+     * @param invoiceId   invoice to mark as paid
+     * @param confirmerId id of the ADMIN/STAFF user confirming the payment
+     * @param request     method (required), reference (required for bank transfer; blank is stored
+     *                    as null) and optional note
+     * @return the updated invoice
+     * @throws com.example.DormlyBackend.exception.model.ResourceNotFoundException when the invoice
+     *         or the confirming user does not exist
+     * @throws com.example.DormlyBackend.exception.model.BusinessException with
+     *         {@link ErrorCode#INVOICE_ALREADY_PAID} when the invoice is already {@code PAID}
+     */
+    public InvoiceResponseDto confirmPayment(UUID invoiceId, UUID confirmerId,
+                                             InvoicePaymentConfirmationRequest request) {
+        Invoice invoice = invoiceRepository.findByIdForUpdate(invoiceId)
                 .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "Invoice", invoiceId));
+        if (invoice.getStatus() == InvoiceStatus.PAID) {
+            throw ExceptionFactory.business(ErrorCode.INVOICE_ALREADY_PAID, invoiceId);
+        }
+        User confirmer = userRepository.findById(confirmerId)
+                .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "User", confirmerId));
 
         invoice.setStatus(InvoiceStatus.PAID);
-        invoice.setPaidAt(LocalDateTime.now());
-        Invoice saved = invoiceRepository.save(invoice);
-        return mapToDto(saved);
+        invoice.setPaidAt(LocalDateTime.now(clock));
+        invoice.setPaymentMethod(request.getMethod());
+        invoice.setPaymentReference(blankToNull(request.getReference()));
+        invoice.setPaymentNote(blankToNull(request.getNote()));
+        invoice.setConfirmedBy(confirmer);
+        return mapToDto(invoiceRepository.save(invoice));
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     /**

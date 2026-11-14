@@ -1,5 +1,6 @@
 package com.example.DormlyBackend.controller;
 
+import com.example.DormlyBackend.dto.request.InvoicePaymentConfirmationRequest;
 import com.example.DormlyBackend.dto.request.InvoiceRequestDto;
 import com.example.DormlyBackend.dto.response.ApiResponse;
 import com.example.DormlyBackend.dto.response.InvoiceResponseDto;
@@ -31,12 +32,18 @@ public class InvoiceController {
                 .build();
     }
 
-    @PostMapping("/api/invoices/{id}/pay")
-    public ApiResponse<InvoiceResponseDto> pay(@PathVariable UUID id) {
-        var result = invoiceService.payInvoice(id);
+    /**
+     * Records that staff received payment for an invoice. Restricted to ADMIN/STAFF: a student
+     * request alone can never move an invoice to {@code PAID}.
+     */
+    @PreAuthorize("hasAnyRole('ADMIN','STAFF')")
+    @PostMapping("/api/invoices/{id}/confirm-payment")
+    public ApiResponse<InvoiceResponseDto> confirmPayment(@PathVariable UUID id,
+                                                          @RequestBody @Valid InvoicePaymentConfirmationRequest request) {
+        var result = invoiceService.confirmPayment(id, currentUserId(), request);
         return ApiResponse.<InvoiceResponseDto>builder()
                 .result(result)
-                .message("Invoice paid successfully")
+                .message("Invoice payment confirmed successfully")
                 .build();
     }
 
