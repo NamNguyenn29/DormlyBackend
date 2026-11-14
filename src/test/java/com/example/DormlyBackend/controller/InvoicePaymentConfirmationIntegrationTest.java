@@ -212,6 +212,19 @@ class InvoicePaymentConfirmationIntegrationTest {
     }
 
     @Test
+    @DisplayName("An unknown payment method value or an unreadable body is a 400, not a server error")
+    void unreadableBodyIs400() throws Exception {
+        User student = fixtures.createUser("STUDENT");
+        User staff = fixtures.createUser("STAFF");
+        Invoice invoice = fixtures.createInvoice(student, InvoiceStatus.UNPAID);
+
+        confirm(invoice.getId(), staff, "{\"method\":\"PAYPAL\"}").andExpect(status().isBadRequest());
+        confirm(invoice.getId(), staff, "not json").andExpect(status().isBadRequest());
+
+        assertEquals(InvoiceStatus.UNPAID, reload(invoice).getStatus());
+    }
+
+    @Test
     @DisplayName("A second confirmation is a conflict and keeps the first evidence")
     void secondConfirmationIs409AndKeepsOriginal() throws Exception {
         User student = fixtures.createUser("STUDENT");

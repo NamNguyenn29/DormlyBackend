@@ -242,7 +242,7 @@ Quản lý hóa đơn phòng/dịch vụ.
 | Method | Endpoint                      | Auth        | Mô tả                                    |
 |--------|-------------------------------|-------------|------------------------------------------|
 | `GET`  | `/api/invoices/{id}`          | ✅          | Lấy chi tiết hóa đơn theo ID             |
-| `POST` | `/api/invoices/{id}/pay`      | ✅          | Thanh toán hóa đơn                        |
+| `POST` | `/api/invoices/{id}/confirm-payment` | 🔒 `ADMIN`, `STAFF` | Xác nhận đã thu tiền (xem `docs/api/invoice-payment-confirmation.md`) |
 | `GET`  | `/api/users/me/invoices`      | ✅          | Sinh viên xem danh sách hóa đơn của mình |
 | `POST` | `/api/invoices`               | 🔒 `ADMIN` | Admin tạo hóa đơn mới                    |
 | `GET`  | `/api/invoices`               | 🔒 `ADMIN` | Admin lấy tất cả hóa đơn                 |

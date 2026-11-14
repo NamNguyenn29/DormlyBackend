@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -57,6 +58,16 @@ public class GlobalExceptionHandler {
                 .build();
 
         return ResponseEntity.badRequest().body(body);
+    }
+
+    /**
+     * Maps a request body that cannot be parsed (malformed JSON, unknown enum value, wrong type,
+     * missing body) to {@code 400 INVALID_REQUEST} instead of letting it fall to the 500 handler.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnreadableBody(HttpMessageNotReadableException ex) {
+        log.warn("Unreadable request body [traceId={}]: {}", traceId(), ex.getMessage());
+        return buildError(ExceptionFactory.business(ErrorCode.INVALID_REQUEST));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
