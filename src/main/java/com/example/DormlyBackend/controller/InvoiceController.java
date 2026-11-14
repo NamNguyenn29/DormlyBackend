@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,7 +24,7 @@ public class InvoiceController {
     // Public / Shared endpoints for authenticated users
     @GetMapping("/api/invoices/{id}")
     public ApiResponse<InvoiceResponseDto> getById(@PathVariable UUID id) {
-        var result = invoiceService.getInvoiceById(id);
+        var result = invoiceService.getInvoiceById(id, currentUserId(), currentUserIsStaff());
         return ApiResponse.<InvoiceResponseDto>builder()
                 .result(result)
                 .message("Get invoice by id successfully")
@@ -69,6 +70,13 @@ public class InvoiceController {
                 .result(result)
                 .message("Get all invoices successfully")
                 .build();
+    }
+
+    private boolean currentUserIsStaff() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(authority -> authority.equals("ROLE_ADMIN") || authority.equals("ROLE_STAFF"));
     }
 
     private UUID currentUserId() {

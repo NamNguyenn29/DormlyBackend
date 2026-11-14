@@ -7,6 +7,7 @@ import com.example.DormlyBackend.entity.building.RoomAssignment;
 import com.example.DormlyBackend.enums.InvoiceStatus;
 import com.example.DormlyBackend.exception.code.ErrorCode;
 import com.example.DormlyBackend.exception.factory.ExceptionFactory;
+import com.example.DormlyBackend.policy.InvoiceAccessPolicy;
 import com.example.DormlyBackend.repository.InvoiceRepository;
 import com.example.DormlyBackend.repository.RoomAssignmentRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class InvoiceService {
 
     private final InvoiceRepository invoiceRepository;
     private final RoomAssignmentRepository roomAssignmentRepository;
+    private final InvoiceAccessPolicy invoiceAccessPolicy;
 
     public InvoiceResponseDto createInvoice(InvoiceRequestDto request) {
         RoomAssignment assignment = roomAssignmentRepository.findById(request.getRoomAssignmentId())
@@ -55,9 +57,22 @@ public class InvoiceService {
         return mapToDto(saved);
     }
 
+    /**
+     * Returns one invoice to a caller who is allowed to see it.
+     *
+     * <p>A missing invoice and an invoice the caller may not see are reported identically
+     * ({@code RESOURCE_NOT_FOUND}) so invoice ids cannot be probed.
+     *
+     * @param id       invoice id
+     * @param callerId id of the authenticated user
+     * @param isStaff  true when the caller holds the ADMIN or STAFF role
+     * @throws com.example.DormlyBackend.exception.model.ResourceNotFoundException when the invoice
+     *         does not exist or {@link InvoiceAccessPolicy#canView} rejects the caller
+     */
     @Transactional(readOnly = true)
-    public InvoiceResponseDto getInvoiceById(UUID id) {
+    public InvoiceResponseDto getInvoiceById(UUID id, UUID callerId, boolean isStaff) {
         Invoice invoice = invoiceRepository.findById(id)
+                .filter(found -> invoiceAccessPolicy.canView(found, callerId, isStaff))
                 .orElseThrow(() -> ExceptionFactory.notFound(ErrorCode.RESOURCE_NOT_FOUND, "Invoice", id));
         return mapToDto(invoice);
     }

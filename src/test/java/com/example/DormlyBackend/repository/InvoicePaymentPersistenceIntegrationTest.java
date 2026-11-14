@@ -79,7 +79,7 @@ class InvoicePaymentPersistenceIntegrationTest {
         assertNull(reloaded.getPaymentNote());
         assertNull(reloaded.getConfirmedBy());
 
-        InvoiceResponseDto dto = invoiceService.getInvoiceById(invoice.getId());
+        InvoiceResponseDto dto = invoiceService.getInvoiceById(invoice.getId(), student.getId(), false);
         assertEquals(InvoiceStatus.PAID, dto.getStatus());
         assertNull(dto.getPaymentMethod());
         assertNull(dto.getPaymentReference());
