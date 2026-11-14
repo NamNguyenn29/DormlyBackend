@@ -2,6 +2,7 @@ package com.example.DormlyBackend.dto.response;
 
 import com.example.DormlyBackend.enums.FeeCategory;
 import com.example.DormlyBackend.enums.InvoiceStatus;
+import com.example.DormlyBackend.enums.PaymentMethod;
 import lombok.Builder;
 import lombok.Data;
 
@@ -27,4 +28,8 @@ public class InvoiceResponseDto {
     LocalDateTime paidAt;
     String paymentQrCodeUrl;
     String notes;
+    PaymentMethod paymentMethod;
+    String paymentReference;
+    String paymentNote;
+    String confirmedByName;
 }

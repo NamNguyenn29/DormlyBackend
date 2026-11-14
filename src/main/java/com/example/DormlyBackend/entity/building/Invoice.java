@@ -1,8 +1,10 @@
 package com.example.DormlyBackend.entity.building;
 
 import com.example.DormlyBackend.configuration.AuditMetaData;
+import com.example.DormlyBackend.entity.authentication.User;
 import com.example.DormlyBackend.enums.FeeCategory;
 import com.example.DormlyBackend.enums.InvoiceStatus;
+import com.example.DormlyBackend.enums.PaymentMethod;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -56,6 +58,23 @@ public class Invoice {
 
     @Column(name = "notes", columnDefinition = "nvarchar(max)")
     String notes;
+
+    /** How staff received the payment; null until payment is confirmed (and for legacy PAID rows). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_method", length = 30)
+    PaymentMethod paymentMethod;
+
+    /** Bank transaction code or cash receipt number given by the confirming staff member. */
+    @Column(name = "payment_reference", length = 100, columnDefinition = "nvarchar(100)")
+    String paymentReference;
+
+    @Column(name = "payment_note", length = 500, columnDefinition = "nvarchar(500)")
+    String paymentNote;
+
+    /** Staff member who recorded the payment. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "confirmed_by_user_id")
+    User confirmedBy;
 
     @Embedded
     @Builder.Default

@@ -102,6 +102,10 @@ public class InvoiceService {
                 .paidAt(invoice.getPaidAt())
                 .paymentQrCodeUrl(invoice.getPaymentQrCodeUrl())
                 .notes(invoice.getNotes())
+                .paymentMethod(invoice.getPaymentMethod())
+                .paymentReference(invoice.getPaymentReference())
+                .paymentNote(invoice.getPaymentNote())
+                .confirmedByName(invoice.getConfirmedBy() != null ? invoice.getConfirmedBy().getFullName() : null)
                 .build();
     }
 }
